@@ -544,7 +544,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 Chip chip = new Chip(this);
                 chip.setText(name);
                 int color = tabManager.getGroupColor(name);
-                chip.setChipBackgroundColor(color);
+                chip.setChipBackgroundColor(android.content.res.ColorStateList.valueOf(color));
                 chip.setTextColor(Color.WHITE);
                 chip.setCheckable(true);
                 chip.setOnClickListener(c -> {
