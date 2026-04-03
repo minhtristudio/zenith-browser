@@ -48,6 +48,16 @@ import com.zenith.browser.devtools.DevToolsHelper;
 import com.zenith.browser.extensions.ExtensionManager;
 import com.zenith.browser.extensions.FileUtils;
 
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.bottomappbar.BottomAppBar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.card.MaterialCardView;
+
+import android.webkit.WebChromeClient;
+
 import java.util.ArrayList;
 import java.util.List;
 
