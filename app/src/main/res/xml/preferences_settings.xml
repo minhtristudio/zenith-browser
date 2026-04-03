@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="General"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="search_engine"
+            android:title="Search engine"
+            android:entries="@array/search_engines"
+            android:entryValues="@array/search_engine_values"
+            android:defaultValue="Google"
+            android:summary="Google" />
+
+        <SwitchPreferenceCompat
+            android:key="restore_tabs"
+            android:title="Restore tabs on startup"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="confirm_close_tabs"
+            android:title="Confirm before closing all tabs"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Appearance"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="theme"
+            android:title="Theme"
+            android:entries="@array/theme_entries"
+            android:entryValues="@array/theme_values"
+            android:defaultValue="follow_system"
+            android:summary="Follow system" />
+
+        <SwitchPreferenceCompat
+            android:key="bottom_bar_enabled"
+            android:title="Show bottom navigation bar"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Privacy"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="javascript_enabled"
+            android:title="JavaScript"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="cookies_enabled"
+            android:title="Cookies"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="do_not_track"
+            android:title="Do Not Track header"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="block_popups"
+            android:title="Block pop-ups"
+            android:defaultValue="true" />
+
+        <Preference
+            android:key="clear_cookies"
+            android:title="Clear cookies" />
+
+        <Preference
+            android:key="clear_cache"
+            android:title="Clear cache" />
+
+        <Preference
+            android:key="clear_browsing_data"
+            android:title="Clear all browsing data" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Advanced"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="devtools_enabled"
+            android:title="Enable Developer Tools"
+            android:defaultValue="true"
+            android:summary="Built-in Eruda DevTools panel" />
+
+        <SwitchPreferenceCompat
+            android:key="desktop_mode_default"
+            android:title="Default desktop mode"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="media_autoplay"
+            android:title="Allow media autoplay"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="save_data"
+            android:title="Request 'Save-Data' header"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="About"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="about"
+            android:title="About Zenith Browser" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

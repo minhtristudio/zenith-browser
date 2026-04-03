@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="search_engines">
+        <item>Google</item>
+        <item>Bing</item>
+        <item>DuckDuckGo</item>
+        <item>Yahoo</item>
+        <item>Brave</item>
+        <item>Startpage</item>
+        <item>Yandex</item>
+        <item>Baidu</item>
+    </string-array>
+
+    <string-array name="search_engine_values">
+        <item>Google</item>
+        <item>Bing</item>
+        <item>DuckDuckGo</item>
+        <item>Yahoo</item>
+        <item>Brave</item>
+        <item>Startpage</item>
+        <item>Yandex</item>
+        <item>Baidu</item>
+    </string-array>
+
+    <string-array name="theme_entries">
+        <item>Follow system</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>follow_system</item>
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+    <string-array name="user_agent_entries">
+        <item>Default (Mobile)</item>
+        <item>Desktop Chrome</item>
+        <item>Custom</item>
+    </string-array>
+
+    <string-array name="user_agent_values">
+        <item>default</item>
+        <item>desktop</item>
+        <item>custom</item>
+    </string-array>
+</resources>

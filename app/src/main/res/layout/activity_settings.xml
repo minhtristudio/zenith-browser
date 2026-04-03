@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/toolbar_background"
+        android:elevation="4dp"
+        app:titleTextColor="@color/md_theme_on_surface"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        app:title="Settings"
+        app:navigationIcon="@android:drawable/ic_menu_revert"
+        app:titleTextAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/settings_container"
+        android:name="androidx.preference.PreferenceFragmentCompat"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</LinearLayout>

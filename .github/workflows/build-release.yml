@@ -1,0 +1,157 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create gradle wrapper
+        run: |
+          mkdir -p gradle/wrapper
+          if [ ! -f "gradlew" ]; then
+            curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradlew -o gradlew
+            chmod +x gradlew
+          fi
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          fi
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Create signing keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" > keystore.b64
+          base64 -d keystore.b64 > app/release.keystore
+          rm keystore.b64
+
+      - name: Create signing properties
+        run: |
+          cat > signing.properties << 'EOF'
+          storeFile=release.keystore
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Build Release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PkeystoreFile=release.keystore \
+            -PkeystorePassword=${{ secrets.KEYSTORE_PASSWORD }} \
+            -PkeyAlias=${{ secrets.KEY_ALIAS }} \
+            -PkeyPassword=${{ secrets.KEY_PASSWORD }}
+
+      - name: Sign APK with v1+v2+v3
+        run: |
+          # Find the unsigned APK
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "Found APK: $APK_PATH"
+
+          # Create signed APK with all v1+v2+v3 schemes
+          SIGNED_APK="app/build/outputs/apk/release/zenith-browser-signed.apk"
+
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner sign \
+            --ks release.keystore \
+            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
+            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out "$SIGNED_APK" \
+            "$APK_PATH"
+
+          # Verify signature
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify --print-certs "$SIGNED_APK"
+
+          echo "SIGNED_APK=$SIGNED_APK" >> $GITHUB_ENV
+
+      - name: Get version info
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="v1.0.0-$(echo $GITHUB_SHA | cut -c1-7)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Zenith Browser ${{ steps.version.outputs.version }}"
+          body: |
+            ## Zenith Browser ${{ steps.version.outputs.version }}
+
+            ### Features:
+            - 🔥 **Chromium-based browser engine** - Full web compatibility
+            - 🛠️ **Built-in Developer Tools** (Eruda) - Console, Elements, Network, Sources, Storage
+            - 🧩 **Chrome Extension Support** - Manifest V2 & V3 (.crx / .zip install)
+            - 🌙 **Material 3 Design** - Dynamic theming with dark mode
+            - 🔒 **Privacy features** - Incognito mode, Do Not Track, cookie control
+            - 📱 **Android 8+ Support** - minSdk 26, targetSdk 34
+            - 📥 **Download Manager** - With progress notifications
+            - 🔖 **Bookmarks & History** - Full browsing data management
+            - 🔍 **8 Search Engines** - Google, Bing, DuckDuckGo, Brave, and more
+            - 🖥️ **Desktop Mode** - Toggle user agent for responsive testing
+            - 🔎 **Find in Page** - Quick text search on any page
+            - 📤 **Share** - Share pages via system share sheet
+
+            ### Installation:
+            1. Download the APK below
+            2. Enable "Install from unknown sources" if needed
+            3. Install and enjoy!
+
+            ### Extension Installation:
+            - Open Menu → Extensions → Add Extension
+            - Select `.crx` or `.zip` file from storage
+            - Or enter extension URL to download
+
+            **APK Signed:** v1 + v2 + v3 signing schemes
+
+            **Build Date:** ${{ steps.version.outputs.date }}
+          files: ${{ env.SIGNED_APK }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup keystore
+        if: always()
+        run: |
+          rm -f release.keystore signing.properties
