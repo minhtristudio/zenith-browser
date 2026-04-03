@@ -20,7 +20,7 @@
             android:id="@+id/iv_favicon"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@android:drawable/ic_menu_info_details"
+            android:src="@drawable/ic_info"
             android:contentDescription="Favicon" />
 
         <LinearLayout
@@ -54,7 +54,7 @@
             android:id="@+id/btn_delete"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:src="@android:drawable/ic_menu_delete"
+            android:src="@drawable/ic_delete"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Delete" />
     </LinearLayout>

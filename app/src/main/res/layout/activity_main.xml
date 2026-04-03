@@ -37,7 +37,7 @@
                 android:insetBottom="0dp"
                 android:text="@string/tabs_count"
                 android:textSize="12sp"
-                app:icon="@android:drawable/ic_menu_crop"
+                app:icon="@drawable/ic_tabs"
                 app:iconSize="20dp"
                 app:iconPadding="0dp" />
 
@@ -64,7 +64,7 @@
                         android:id="@+id/iv_security"
                         android:layout_width="18dp"
                         android:layout_height="18dp"
-                        android:src="@android:drawable/ic_lock_lock"
+                        android:src="@drawable/ic_lock"
                         android:contentDescription="Security"
                         android:visibility="gone" />
 
@@ -92,7 +92,7 @@
                         android:id="@+id/btn_clear_url"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
-                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:src="@drawable/ic_close"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Clear"
                         android:visibility="gone" />
@@ -107,7 +107,7 @@
                 android:layout_height="40dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_more"
+                app:icon="@drawable/ic_more"
                 app:iconSize="24dp"
                 app:iconPadding="0dp" />
         </LinearLayout>
@@ -153,7 +153,7 @@
                 android:id="@+id/btn_find_prev"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:src="@android:drawable/ic_media_previous"
+                android:src="@drawable/ic_media_prev"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Previous" />
 
@@ -161,7 +161,7 @@
                 android:id="@+id/btn_find_next"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:src="@android:drawable/ic_media_next"
+                android:src="@drawable/ic_media_next"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Next" />
 
@@ -169,7 +169,7 @@
                 android:id="@+id/btn_find_close"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:src="@drawable/ic_close"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Close" />
         </LinearLayout>
@@ -228,7 +228,7 @@
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_revert"
+                app:icon="@drawable/ic_arrow_back"
                 app:iconSize="22dp"
                 app:iconPadding="0dp" />
 
@@ -240,7 +240,7 @@
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_forward"
+                app:icon="@drawable/ic_arrow_forward"
                 app:iconSize="22dp"
                 app:iconPadding="0dp" />
 
@@ -252,7 +252,7 @@
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_today"
+                app:icon="@drawable/ic_home"
                 app:iconSize="22dp"
                 app:iconPadding="0dp" />
 
@@ -264,7 +264,7 @@
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_add_bookmark"
+                app:icon="@drawable/ic_bookmark_add"
                 app:iconSize="22dp"
                 app:iconPadding="0dp" />
 
@@ -276,7 +276,7 @@
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                app:icon="@android:drawable/ic_menu_info_details"
+                app:icon="@drawable/ic_info"
                 app:iconSize="22dp"
                 app:iconPadding="0dp" />
         </LinearLayout>
@@ -287,7 +287,7 @@
         android:id="@+id/fab_new_tab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@android:drawable/ic_menu_add"
+        android:src="@drawable/ic_add"
         android:contentDescription="@string/new_tab"
         app:layout_anchor="@id/bottom_bar"
         app:fabSize="mini"

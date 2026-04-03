@@ -5,25 +5,25 @@
     <item
         android:id="@+id/menu_new_tab"
         android:title="@string/new_tab"
-        android:icon="@android:drawable/ic_menu_add"
+        android:icon="@drawable/ic_add"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_new_incognito"
         android:title="@string/new_incognito_tab"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/ic_incognito"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_share"
         android:title="@string/share"
-        android:icon="@android:drawable/ic_menu_share"
+        android:icon="@drawable/ic_share"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_find"
         android:title="@string/find_in_page"
-        android:icon="@android:drawable/ic_menu_search"
+        android:icon="@drawable/ic_search"
         app:showAsAction="never" />
 
     <item
@@ -35,7 +35,7 @@
     <item
         android:id="@+id/menu_devtools"
         android:title="@string/devtools"
-        android:icon="@android:drawable/ic_menu_info_details"
+        android:icon="@drawable/ic_info"
         app:showAsAction="never" />
 
     <item
@@ -46,30 +46,30 @@
     <item
         android:id="@+id/menu_bookmarks"
         android:title="@string/bookmarks"
-        android:icon="@android:drawable/ic_menu_agenda"
+        android:icon="@drawable/ic_menu_item"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_history"
         android:title="@string/history"
-        android:icon="@android:drawable/ic_menu_recent_history"
+        android:icon="@drawable/ic_history"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_downloads"
         android:title="@string/downloads"
-        android:icon="@android:drawable/ic_menu_save"
+        android:icon="@drawable/ic_save"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_extensions"
         android:title="@string/extensions"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@drawable/ic_manage"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_settings"
         android:title="@string/settings"
-        android:icon="@android:drawable/ic_menu_preferences"
+        android:icon="@drawable/ic_info"
         app:showAsAction="never" />
 </menu>

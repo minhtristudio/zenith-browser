@@ -12,7 +12,7 @@
         android:background="@color/toolbar_background"
         app:titleTextColor="@color/md_theme_on_surface"
         app:title="Bookmarks"
-        app:navigationIcon="@android:drawable/ic_menu_revert"
+        app:navigationIcon="@drawable/ic_arrow_back"
         app:menu="@menu/menu_bookmarks" />
 
     <androidx.recyclerview.widget.RecyclerView

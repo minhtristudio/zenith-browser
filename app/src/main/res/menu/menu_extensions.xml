@@ -4,6 +4,6 @@
     <item
         android:id="@+id/action_load_from_file"
         android:title="@string/open_from_storage"
-        android:icon="@android:drawable/ic_menu_set_as"
+        android:icon="@drawable/ic_open_file"
         app:showAsAction="ifRoom" />
 </menu>

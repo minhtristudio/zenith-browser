@@ -13,7 +13,7 @@
         app:titleTextColor="@color/md_theme_on_surface"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         app:title="Settings"
-        app:navigationIcon="@android:drawable/ic_menu_revert"
+        app:navigationIcon="@drawable/ic_arrow_back"
         app:titleTextAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
     <androidx.fragment.app.FragmentContainerView

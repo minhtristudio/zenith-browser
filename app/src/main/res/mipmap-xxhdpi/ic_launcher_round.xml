@@ -3,7 +3,7 @@
     <background android:drawable="@color/md_theme_primary" />
     <foreground>
         <inset
-            android:drawable="@android:drawable/ic_menu_compass"
+            android:drawable="@drawable/ic_compass"
             android:inset="25%" />
     </foreground>
 </adaptive-icon>
