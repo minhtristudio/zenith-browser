@@ -1,205 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>New Tab</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #FBFDF9;
-            color: #191C1A;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px 16px;
-        }
-        @media (prefers-color-scheme: dark) {
-            body { background: #191C1A; color: #E1E3DE; }
-            .search-box { background: #282B28; border-color: #3F4943; color: #E1E3DE; }
-            .search-box::placeholder { color: #89938D; }
-            .shortcut-card { background: #282B28; border-color: #3F4943; }
-            .shortcut-card span { color: #E1E3DE; }
-            h1 { color: #88D8B5; }
-            .subtitle { color: #89938D; }
-            .section-title { color: #BFC9C1; }
-            .shortcut-icon { background: #333633; }
-        }
-        h1 {
-            font-size: 40px;
-            font-weight: 700;
-            margin-top: 48px;
-            margin-bottom: 4px;
-            color: #1B6B52;
-        }
-        .subtitle {
-            font-size: 15px;
-            color: #6F7973;
-            margin-bottom: 40px;
-        }
-        .search-box {
-            width: 100%;
-            max-width: 560px;
-            padding: 14px 20px;
-            border: 1px solid #BFC9C1;
-            border-radius: 24px;
-            font-size: 16px;
-            outline: none;
-            background: #EBF0EC;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .search-box:focus {
-            border-color: #1B6B52;
-            box-shadow: 0 2px 8px rgba(27, 107, 82, 0.15);
-        }
-        .search-box::placeholder { color: #6F7973; }
-        .section-title {
-            width: 100%;
-            max-width: 560px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #3F4943;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 40px;
-            margin-bottom: 16px;
-        }
-        .shortcuts-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            width: 100%;
-            max-width: 560px;
-        }
-        @media (max-width: 400px) {
-            .shortcuts-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        .shortcut-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            padding: 16px 8px;
-            border-radius: 12px;
-            background: #EBF0EC;
-            border: 1px solid #BFC9C1;
-            text-decoration: none;
-            transition: transform 0.15s, box-shadow 0.15s;
-            cursor: pointer;
-        }
-        .shortcut-card:active {
-            transform: scale(0.95);
-        }
-        .shortcut-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: #D0E8D6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .shortcut-card span {
-            font-size: 12px;
-            color: #191C1A;
-            text-align: center;
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .info-bar {
-            position: fixed;
-            bottom: 16px;
-            font-size: 12px;
-            color: #89938D;
-        }
-        .ext-badge {
-            display: inline-block;
-            background: #1B6B52;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            margin-left: 4px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>New Tab</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+    height:100%; width:100%; overflow:hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg, #1C1B1F 0%, #2C1513 50%, #261A00 100%);
+    color: #E6E1E5;
+}
+.container {
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; height:100%; padding:24px;
+}
+.logo {
+    width:80px; height:80px; margin-bottom:20px;
+    background: linear-gradient(135deg, #BE0D1E, #FF6B6B);
+    border-radius:20px; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 8px 32px rgba(190,13,30,0.4);
+}
+.logo svg { width:48px; height:48px; fill:white; }
+.title {
+    font-size:28px; font-weight:700; margin-bottom:24px;
+    background: linear-gradient(90deg, #FFB3AD, #FFDAD6);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+}
+.search-box {
+    width:100%; max-width:480px; position:relative; margin-bottom:36px;
+}
+.search-input {
+    width:100%; padding:16px 20px 16px 48px;
+    background: rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:28px; font-size:16px; color:#E6E1E5;
+    outline:none; backdrop-filter:blur(20px);
+    transition: all 0.3s ease;
+}
+.search-input:focus {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(190,13,30,0.6);
+    box-shadow: 0 0 0 3px rgba(190,13,30,0.15);
+}
+.search-input::placeholder { color: rgba(255,255,255,0.4); }
+.search-icon {
+    position:absolute; left:16px; top:50%; transform:translateY(-50%);
+    width:20px; height:20px; opacity:0.5;
+}
+.shortcuts {
+    display:grid; grid-template-columns: repeat(4, 1fr);
+    gap:16px; width:100%; max-width:480px;
+}
+.shortcut {
+    display:flex; flex-direction:column; align-items:center;
+    padding:16px 8px; border-radius:16px; cursor:pointer;
+    background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06);
+    transition: all 0.2s ease; text-decoration:none; color:#E6E1E5;
+}
+.shortcut:active {
+    background: rgba(190,13,30,0.15);
+    transform: scale(0.95);
+}
+.shortcut-icon {
+    width:44px; height:44px; border-radius:12px; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; font-weight:700; color:white;
+}
+.shortcut-label {
+    font-size:11px; text-align:center; opacity:0.7;
+    max-width:72px; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.footer {
+    position:fixed; bottom:16px; text-align:center;
+    font-size:12px; opacity:0.3;
+}
+@media (prefers-color-scheme: light) {
+    html, body {
+        background: linear-gradient(160deg, #FFFBFF 0%, #FFF0EE 50%, #FFF8F0 100%);
+        color: #201A1A;
+    }
+    .title {
+        background: linear-gradient(90deg, #BE0D1E, #705C2E);
+        -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        background-clip:text;
+    }
+    .search-input {
+        background: rgba(0,0,0,0.04);
+        border-color: rgba(0,0,0,0.08);
+        color: #201A1A;
+    }
+    .search-input:focus {
+        background: rgba(0,0,0,0.06);
+        border-color: rgba(190,13,30,0.3);
+    }
+    .search-input::placeholder { color: rgba(0,0,0,0.3); }
+    .search-icon { opacity:0.4; }
+    .shortcut {
+        background: rgba(0,0,0,0.03);
+        border-color: rgba(0,0,0,0.06);
+        color: #201A1A;
+    }
+    .shortcut:active {
+        background: rgba(190,13,30,0.08);
+    }
+    .shortcut-label { opacity:0.6; }
+    .footer { opacity:0.2; color:#201A1A; }
+}
+</style>
 </head>
 <body>
-    <h1>Zenith</h1>
-    <p class="subtitle">Fast. Secure. Extensible.</p>
-
-    <form id="searchForm" onsubmit="doSearch(event)">
-        <input type="text" class="search-box" id="searchInput"
-               placeholder="Search with Google or enter URL"
-               autocomplete="off" autocorrect="off" spellcheck="false">
-    </form>
-
-    <p class="section-title">Quick Access</p>
-    <div class="shortcuts-grid" id="shortcutsGrid">
-        <a class="shortcut-card" href="https://www.google.com">
-            <div class="shortcut-icon">G</div>
-            <span>Google</span>
+<div class="container">
+    <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    </div>
+    <div class="title">Zenith Browser</div>
+    <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="search-input" type="text" placeholder="Search or enter URL..." id="searchInput" />
+    </div>
+    <div class="shortcuts">
+        <a class="shortcut" href="https://www.google.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#4285F4,#34A853)">G</div>
+            <div class="shortcut-label">Google</div>
         </a>
-        <a class="shortcut-card" href="https://www.youtube.com">
-            <div class="shortcut-icon">&#9654;</div>
-            <span>YouTube</span>
+        <a class="shortcut" href="https://www.youtube.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF0000,#CC0000)">▶</div>
+            <div class="shortcut-label">YouTube</div>
         </a>
-        <a class="shortcut-card" href="https://www.github.com">
-            <div class="shortcut-icon">&#9000;</div>
-            <span>GitHub</span>
+        <a class="shortcut" href="https://github.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#333,#555)">⌥</div>
+            <div class="shortcut-label">GitHub</div>
         </a>
-        <a class="shortcut-card" href="https://www.wikipedia.org">
-            <div class="shortcut-icon">W</div>
-            <span>Wikipedia</span>
+        <a class="shortcut" href="https://www.wikipedia.org">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#636466,#999)">W</div>
+            <div class="shortcut-label">Wikipedia</div>
         </a>
-        <a class="shortcut-card" href="https://www.twitter.com">
-            <div class="shortcut-icon">&#120143;</div>
-            <span>Twitter / X</span>
+        <a class="shortcut" href="https://www.reddit.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF4500,#FF6A33)">R</div>
+            <div class="shortcut-label">Reddit</div>
         </a>
-        <a class="shortcut-card" href="https://www.reddit.com">
-            <div class="shortcut-icon">R</div>
-            <span>Reddit</span>
+        <a class="shortcut" href="https://twitter.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#1DA1F2,#0D8BD9)">𝕏</div>
+            <div class="shortcut-label">X</div>
         </a>
-        <a class="shortcut-card" href="https://stackoverflow.com">
-            <div class="shortcut-icon">S</div>
-            <span>StackOverflow</span>
+        <a class="shortcut" href="https://stackoverflow.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#F48024,#D2691E)">S</div>
+            <div class="shortcut-label">StackOverflow</div>
         </a>
-        <a class="shortcut-card" href="https://www.mozilla.org">
-            <div class="shortcut-icon">M</div>
-            <span>MDN Docs</span>
+        <a class="shortcut" href="https://news.ycombinator.com">
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF6600,#CC5200)">Y</div>
+            <div class="shortcut-label">HackerNews</div>
         </a>
     </div>
-
-    <div class="info-bar">
-        Zenith Browser 1.0.0 &bull; Chromium Engine
-        <span class="ext-badge">Extensions Ready</span>
-    </div>
-
-    <script>
-        function doSearch(e) {
-            e.preventDefault();
-            var q = document.getElementById('searchInput').value.trim();
-            if (!q) return;
-            // Try to detect URL
-            if (q.match(/^https?:\/\//i) || (q.match(/\.[a-z]{2,}$/i) && !q.match(/\s/))) {
-                if (!q.match(/^https?:\/\//i)) q = 'https://' + q;
-                window.location.href = q;
-            } else {
-                window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-            }
+</div>
+<div class="footer">Zenith Browser v1.0</div>
+<script>
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && this.value.trim()) {
+        var q = this.value.trim();
+        if (/^(https?:\/\/|www\.)/.test(q)) {
+            if (q.startsWith('www.')) q = 'https://' + q;
+            window.location.href = q;
+        } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(q)) {
+            window.location.href = 'https://' + q;
+        } else {
+            window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
         }
-
-        // Focus search on page load
-        document.getElementById('searchInput').focus();
-
-        // Communicate with Android
-        if (window.__zenithExtension) {
-            console.log('Zenith extension bridge available');
-        }
-    </script>
+    }
+});
+document.getElementById('searchInput').focus();
+</script>
 </body>
 </html>

@@ -31,6 +31,8 @@
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:windowSplashScreenBackground">@color/md_theme_primary</item>
+        <item name="android:windowSplashScreenAnimationDuration">500</item>
     </style>
 
     <style name="Theme.ZenithBrowser.Splash" parent="Theme.Material3.DayNight.NoActionBar">
@@ -78,6 +80,7 @@
         <item name="cardCornerRadius">24dp</item>
         <item name="cardBackgroundColor">@color/url_bar_background</item>
         <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
     </style>
 
     <style name="TabChipStyle" parent="Widget.Material3.CardView.Outlined">

@@ -1,50 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Warm Burnt Orange / Amber Theme (Light) -->
-    <color name="md_theme_primary">#8B2100</color>
+    <!-- Crimson / Charcoal Theme (Light) -->
+    <color name="md_theme_primary">#BE0D1E</color>
     <color name="md_theme_on_primary">#FFFFFF</color>
-    <color name="md_theme_primary_container">#FFDBD4</color>
-    <color name="md_theme_on_primary_container">#2E0700</color>
-    <color name="md_theme_secondary">#77574D</color>
+    <color name="md_theme_primary_container">#FFDAD6</color>
+    <color name="md_theme_on_primary_container">#410003</color>
+    <color name="md_theme_secondary">#775653</color>
     <color name="md_theme_on_secondary">#FFFFFF</color>
-    <color name="md_theme_secondary_container">#FFDBD2</color>
-    <color name="md_theme_on_secondary_container">#2C1510</color>
-    <color name="md_theme_tertiary">#6D5D2F</color>
+    <color name="md_theme_secondary_container">#FFDAD6</color>
+    <color name="md_theme_on_secondary_container">#2C1513</color>
+    <color name="md_theme_tertiary">#705C2E</color>
     <color name="md_theme_on_tertiary">#FFFFFF</color>
-    <color name="md_theme_tertiary_container">#F8E1A5</color>
-    <color name="md_theme_on_tertiary_container">#251B00</color>
+    <color name="md_theme_tertiary_container">#FBDEA6</color>
+    <color name="md_theme_on_tertiary_container">#261A00</color>
     <color name="md_theme_error">#BA1A1A</color>
     <color name="md_theme_on_error">#FFFFFF</color>
     <color name="md_theme_error_container">#FFDAD6</color>
     <color name="md_theme_on_error_container">#410002</color>
     <color name="md_theme_background">#FFFBFF</color>
-    <color name="md_theme_on_background">#201A18</color>
+    <color name="md_theme_on_background">#201A1A</color>
     <color name="md_theme_surface">#FFFBFF</color>
-    <color name="md_theme_on_surface">#201A18</color>
-    <color name="md_theme_surface_variant">#F5DDDA</color>
-    <color name="md_theme_on_surface_variant">#534340</color>
-    <color name="md_theme_outline">#857371</color>
-    <color name="md_theme_outline_variant">#D8C2BE</color>
-    <color name="md_theme_surface_container">#EFDFDC</color>
-    <color name="md_theme_surface_container_low">#F8F0ED</color>
-    <color name="md_theme_surface_container_high">#E8D9D5</color>
-    <color name="md_theme_surface_container_highest">#E2D3CF</color>
-    <color name="md_theme_inverse_surface">#362F2D</color>
-    <color name="md_theme_inverse_on_surface">#FBECEE</color>
-    <color name="md_theme_inverse_primary">#FFB59E</color>
+    <color name="md_theme_on_surface">#201A1A</color>
+    <color name="md_theme_surface_variant">#F4DDDB</color>
+    <color name="md_theme_on_surface_variant">#534341</color>
+    <color name="md_theme_outline">#857370</color>
+    <color name="md_theme_outline_variant">#D8C2BF</color>
+    <color name="md_theme_surface_container">#F0DFDD</color>
+    <color name="md_theme_surface_container_low">#F8F0EE</color>
+    <color name="md_theme_surface_container_high">#E9D9D7</color>
+    <color name="md_theme_surface_container_highest">#E3D3D1</color>
+    <color name="md_theme_inverse_surface">#362F2F</color>
+    <color name="md_theme_inverse_on_surface">#FBEEEC</color>
+    <color name="md_theme_inverse_primary">#FFB3AD</color>
     <color name="md_theme_scrim">#000000</color>
     <color name="md_theme_shadow">#000000</color>
 
-    <!-- Incognito dark theme -->
-    <color name="incognito_primary">#E2A8FF</color>
+    <!-- Incognito dark theme - Deep Purple/Violet -->
+    <color name="incognito_primary">#FFB3C1</color>
     <color name="incognito_surface">#1C1B1F</color>
     <color name="incognito_on_surface">#E6E1E5</color>
-    <color name="tab_active_bar">#8B2100</color>
+    <color name="tab_active_bar">#BE0D1E</color>
     <color name="toolbar_background">#FFFBFF</color>
-    <color name="url_bar_background">#EFDFDC</color>
-    <color name="divider_color">#D8C2BE</color>
-    <color name="secure_connection">#6D5D2F</color>
+    <color name="url_bar_background">#F0DFDD</color>
+    <color name="divider_color">#D8C2BF</color>
+    <color name="secure_connection">#705C2E</color>
     <color name="insecure_connection">#BA1A1A</color>
-    <color name="accent_warm">#BF360C</color>
-    <color name="accent_gold">#F8E1A5</color>
+    <color name="accent_warm">#BE0D1E</color>
+    <color name="accent_gold">#FBDEA6</color>
 </resources>

@@ -168,17 +168,26 @@ public class BrowserTab {
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
-            if (listener != null) listener.onPageStarted(((BrowserTab) view.getTag()), url, favicon);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onPageStarted((BrowserTab) tag, url, favicon);
+            }
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (listener != null) listener.onPageFinished(((BrowserTab) view.getTag()), url);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onPageFinished((BrowserTab) tag, url);
+            }
         }
 
         @Override
         public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
-            if (listener != null) listener.onUrlChanged(((BrowserTab) view.getTag()), url);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onUrlChanged((BrowserTab) tag, url);
+            }
         }
 
         @Override
@@ -189,28 +198,42 @@ public class BrowserTab {
         @Override
         public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
             if (listener != null && request.isForMainFrame()) {
-                listener.onReceivedError((BrowserTab) view.getTag(),
-                    error.getErrorCode(), error.getDescription().toString(),
-                    request.getUrl().toString());
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) {
+                    String desc = error.getDescription() != null ? error.getDescription().toString() : "Unknown error";
+                    listener.onReceivedError((BrowserTab) tag, error.getErrorCode(), desc, request.getUrl().toString());
+                }
             }
         }
 
         @Override
         public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
-            if (listener != null) listener.onSslError((BrowserTab) view.getTag(), view.getUrl());
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onSslError((BrowserTab) tag, view.getUrl());
+            }
             handler.cancel();
         }
 
         public void onLoadResource(WebView view, String url) {
-            if (listener != null) listener.onLoadResource((BrowserTab) view.getTag(), url);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onLoadResource((BrowserTab) tag, url);
+            }
         }
 
         public void onReceivedIcon(WebView view, Bitmap icon) {
-            if (listener != null) listener.onPageIconChanged((BrowserTab) view.getTag(), icon);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onPageIconChanged((BrowserTab) tag, icon);
+            }
         }
 
         public void onReceivedTitle(WebView view, String title) {
-            if (listener != null) listener.onTitleChanged((BrowserTab) view.getTag(), title);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onTitleChanged((BrowserTab) tag, title);
+            }
         }
     }
 
@@ -223,22 +246,33 @@ public class BrowserTab {
 
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
-            if (listener != null) listener.onProgressChanged((BrowserTab) view.getTag(), newProgress);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onProgressChanged((BrowserTab) tag, newProgress);
+            }
         }
 
         @Override
         public void onReceivedTitle(WebView view, String title) {
-            if (listener != null) listener.onTitleChanged((BrowserTab) view.getTag(), title);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onTitleChanged((BrowserTab) tag, title);
+            }
         }
 
         @Override
         public void onReceivedIcon(WebView view, Bitmap icon) {
-            if (listener != null) listener.onPageIconChanged((BrowserTab) view.getTag(), icon);
+            if (listener != null) {
+                Object tag = view.getTag();
+                if (tag instanceof BrowserTab) listener.onPageIconChanged((BrowserTab) tag, icon);
+            }
         }
 
         @Override
         public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
             if (listener != null) {
+                Object tag = null;
+                // Don't crash if we can't get the tab
                 listener.onConsoleMessage(null,
                     consoleMessage.message(), consoleMessage.lineNumber(), consoleMessage.sourceId());
             }

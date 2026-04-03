@@ -342,6 +342,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
 
         // Add new WebView
         WebView webView = tab.getWebView();
+        webView.setTag(tab); // CRITICAL: Re-set tag after view operations
         webView.setId(R.id.tab_webview);
         tabContent.removeAllViews();
         tabContent.addView(webView, new FrameLayout.LayoutParams(
@@ -400,17 +401,20 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private void updateBookmarkButton(BrowserTab tab) {
         if (tab == null) return;
         String url = tab.getUrl();
-        if (url.startsWith("zenith://") || url.isEmpty()) {
+        if (url == null || url.startsWith("zenith://") || url.isEmpty()) {
             btnBookmark.setAlpha(0.3f);
             return;
         }
-        boolean isBookmarked = db.isBookmarked(url);
-        // Change icon based on bookmark state
-        if (btnBookmark instanceof ImageView) {
-            ((ImageView) btnBookmark).setImageResource(
-                isBookmarked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+        try {
+            boolean isBookmarked = db.isBookmarked(url);
+            if (btnBookmark instanceof MaterialButton) {
+                ((MaterialButton) btnBookmark).setIcon(
+                    ContextCompat.getDrawable(this, isBookmarked ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark_add));
+            }
+            btnBookmark.setAlpha(1.0f);
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating bookmark", e);
         }
-        btnBookmark.setAlpha(1.0f);
     }
 
     private void updateTabCounter() {
@@ -476,74 +480,79 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     }
 
     private void showOverflowMenu() {
-        BrowserTab tab = tabManager.getActiveTab();
+        try {
+            BrowserTab tab = tabManager.getActiveTab();
 
-        // Build menu items - use a custom adapter to support dividers (null = divider)
-        List<String> menuItems = new ArrayList<>();
-        boolean onWebPage = tab != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://");
+            // Build menu items - use a custom adapter to support dividers (null = divider)
+            List<String> menuItems = new ArrayList<>();
+            boolean onWebPage = tab != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://");
 
-        menuItems.add("New tab");
-        menuItems.add("New incognito tab");
-        menuItems.add(null); // divider
-
-        if (onWebPage) {
-            menuItems.add("Share");
-            menuItems.add("Find in page");
-            menuItems.add("Desktop site" + (tab.isDesktopMode() ? " \u2713" : ""));
+            menuItems.add("New tab");
+            menuItems.add("New incognito tab");
             menuItems.add(null); // divider
-            menuItems.add("Developer Tools");
-            menuItems.add("View source");
-            menuItems.add(null); // divider
-        }
 
-        menuItems.add("Bookmarks");
-        menuItems.add("History");
-        menuItems.add("Downloads");
-        menuItems.add("Extensions");
-        menuItems.add(null); // divider
-        menuItems.add("Settings");
-
-        // Build a non-null items array and track which indices are actual items
-        final String[] displayItems = new String[menuItems.size()];
-        final int[] itemIndexMap = new int[menuItems.size()]; // maps display position -> original index
-        int displayPos = 0;
-        for (int i = 0; i < menuItems.size(); i++) {
-            String item = menuItems.get(i);
-            if (item != null) {
-                displayItems[displayPos] = item;
-                itemIndexMap[displayPos] = i;
-                displayPos++;
+            if (onWebPage) {
+                menuItems.add("Share");
+                menuItems.add("Find in page");
+                menuItems.add("Desktop site" + (tab.isDesktopMode() ? " \u2713" : ""));
+                menuItems.add(null); // divider
+                menuItems.add("Developer Tools");
+                menuItems.add("View source");
+                menuItems.add(null); // divider
             }
-        }
 
-        // Trim the array to actual size
-        String[] finalItems = new String[displayPos];
-        System.arraycopy(displayItems, 0, finalItems, 0, displayPos);
+            menuItems.add("Bookmarks");
+            menuItems.add("History");
+            menuItems.add("Downloads");
+            menuItems.add("Extensions");
+            menuItems.add(null); // divider
+            menuItems.add("Settings");
 
-        new MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.menu)
-            .setItems(finalItems, (dialog, which) -> {
-                String item = finalItems[which];
-                if (item == null) return;
-
-                if (item.equals("New tab")) openNewTab();
-                else if (item.equals("New incognito tab")) openNewIncognitoTab();
-                else if (item.equals("Share")) sharePage();
-                else if (item.equals("Find in page")) showFindInPage();
-                else if (item.startsWith("Desktop site")) toggleDesktopMode();
-                else if (item.equals("Developer Tools")) {
-                    if (tab != null && DevToolsHelper.isDevToolsEnabled()) {
-                        DevToolsHelper.toggleDevTools(tab.getWebView());
-                    }
+            // Build a non-null items array and track which indices are actual items
+            final String[] displayItems = new String[menuItems.size()];
+            final int[] itemIndexMap = new int[menuItems.size()];
+            int displayPos = 0;
+            for (int i = 0; i < menuItems.size(); i++) {
+                String item = menuItems.get(i);
+                if (item != null) {
+                    displayItems[displayPos] = item;
+                    itemIndexMap[displayPos] = i;
+                    displayPos++;
                 }
-                else if (item.equals("View source")) viewSource();
-                else if (item.equals("Bookmarks")) startActivityForResult(new Intent(this, com.zenith.browser.ui.BookmarksActivity.class), REQUEST_BOOKMARKS);
-                else if (item.equals("History")) startActivityForResult(new Intent(this, com.zenith.browser.ui.HistoryActivity.class), REQUEST_HISTORY);
-                else if (item.equals("Downloads")) startActivity(new Intent(this, com.zenith.browser.ui.DownloadsActivity.class));
-                else if (item.equals("Extensions")) startActivityForResult(new Intent(this, com.zenith.browser.ui.ExtensionsActivity.class), REQUEST_EXTENSIONS);
-                else if (item.equals("Settings")) startActivityForResult(new Intent(this, com.zenith.browser.ui.SettingsActivity.class), REQUEST_SETTINGS);
-            })
-            .show();
+            }
+
+            // Trim the array to actual size
+            String[] finalItems = new String[displayPos];
+            System.arraycopy(displayItems, 0, finalItems, 0, displayPos);
+
+            new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.menu)
+                .setItems(finalItems, (dialog, which) -> {
+                    String item = finalItems[which];
+                    if (item == null) return;
+
+                    if (item.equals("New tab")) openNewTab();
+                    else if (item.equals("New incognito tab")) openNewIncognitoTab();
+                    else if (item.equals("Share")) sharePage();
+                    else if (item.equals("Find in page")) showFindInPage();
+                    else if (item.startsWith("Desktop site")) toggleDesktopMode();
+                    else if (item.equals("Developer Tools")) {
+                        if (tab != null && DevToolsHelper.isDevToolsEnabled()) {
+                            DevToolsHelper.toggleDevTools(tab.getWebView());
+                        }
+                    }
+                    else if (item.equals("View source")) viewSource();
+                    else if (item.equals("Bookmarks")) startActivityForResult(new Intent(this, com.zenith.browser.ui.BookmarksActivity.class), REQUEST_BOOKMARKS);
+                    else if (item.equals("History")) startActivityForResult(new Intent(this, com.zenith.browser.ui.HistoryActivity.class), REQUEST_HISTORY);
+                    else if (item.equals("Downloads")) startActivity(new Intent(this, com.zenith.browser.ui.DownloadsActivity.class));
+                    else if (item.equals("Extensions")) startActivityForResult(new Intent(this, com.zenith.browser.ui.ExtensionsActivity.class), REQUEST_EXTENSIONS);
+                    else if (item.equals("Settings")) startActivityForResult(new Intent(this, com.zenith.browser.ui.SettingsActivity.class), REQUEST_SETTINGS);
+                })
+                .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing menu", e);
+            Toast.makeText(this, "Error opening menu", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void sharePage() {
