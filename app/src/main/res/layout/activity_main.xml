@@ -20,9 +20,9 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="4dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="8dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="6dp"
             android:paddingBottom="4dp"
             android:background="@color/toolbar_background"
             android:elevation="2dp">
@@ -31,14 +31,16 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_tab_counter"
                 style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/tabs_count"
-                android:textSize="12sp"
+                android:textSize="11sp"
+                android:textColor="@color/md_theme_primary"
                 app:icon="@drawable/ic_tabs"
-                app:iconSize="20dp"
+                app:iconSize="18dp"
+                app:iconTint="@color/md_theme_primary"
                 app:iconPadding="0dp" />
 
             <!-- URL/Omnibox Bar -->
@@ -46,10 +48,10 @@
                 android:id="@+id/url_bar_container"
                 style="@style/UrlBarStyle"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
+                android:layout_height="40dp"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp">
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -62,8 +64,8 @@
                     <!-- Security indicator -->
                     <ImageView
                         android:id="@+id/iv_security"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:src="@drawable/ic_lock"
                         android:contentDescription="Security"
                         android:visibility="gone" />
@@ -90,8 +92,8 @@
                     <!-- Clear URL button -->
                     <ImageButton
                         android:id="@+id/btn_clear_url"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
                         android:src="@drawable/ic_close"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Clear"
@@ -103,12 +105,12 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_menu"
                 style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 app:icon="@drawable/ic_more"
-                app:iconSize="24dp"
+                app:iconSize="22dp"
                 app:iconPadding="0dp" />
         </LinearLayout>
 
@@ -116,7 +118,7 @@
         <LinearLayout
             android:id="@+id/find_in_page_bar"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="8dp"
@@ -151,24 +153,24 @@
 
             <ImageButton
                 android:id="@+id/btn_find_prev"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@drawable/ic_media_prev"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Previous" />
 
             <ImageButton
                 android:id="@+id/btn_find_next"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@drawable/ic_media_next"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Next" />
 
             <ImageButton
                 android:id="@+id/btn_find_close"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@drawable/ic_close"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Close" />
@@ -179,7 +181,7 @@
             android:id="@+id/progress_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
+            android:layout_height="2dp"
             android:max="100"
             android:progress="0"
             android:visibility="gone"
@@ -201,96 +203,76 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Bottom Navigation / Quick Actions -->
-    <com.google.android.material.bottomappbar.BottomAppBar
+    <!-- Bottom Navigation Bar (no FAB) -->
+    <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="44dp"
         android:layout_gravity="bottom"
-        android:backgroundTint="@color/toolbar_background"
-        app:elevation="8dp"
-        app:fabAnimationMode="slide"
-        app:fabCradleMargin="8dp"
-        app:fabCradleRoundedCornerRadius="16dp"
-        app:hideOnScroll="true">
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@color/toolbar_background"
+        android:elevation="8dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_back"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_arrow_back"
+            app:iconSize="20dp"
+            app:iconPadding="0dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_back"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_arrow_back"
-                app:iconSize="22dp"
-                app:iconPadding="0dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_forward"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_arrow_forward"
+            app:iconSize="20dp"
+            app:iconPadding="0dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_forward"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_arrow_forward"
-                app:iconSize="22dp"
-                app:iconPadding="0dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_home"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_home"
+            app:iconSize="20dp"
+            app:iconPadding="0dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_home"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_home"
-                app:iconSize="22dp"
-                app:iconPadding="0dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_bookmark"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_bookmark_add"
+            app:iconSize="20dp"
+            app:iconPadding="0dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_bookmark"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_bookmark_add"
-                app:iconSize="22dp"
-                app:iconPadding="0dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_devtools"
-                style="@style/Widget.Material3.Button.TextButton.Icon"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:icon="@drawable/ic_info"
-                app:iconSize="22dp"
-                app:iconPadding="0dp" />
-        </LinearLayout>
-    </com.google.android.material.bottomappbar.BottomAppBar>
-
-    <!-- FAB for New Tab -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_new_tab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_add"
-        android:contentDescription="@string/new_tab"
-        app:layout_anchor="@id/bottom_bar"
-        app:fabSize="mini"
-        app:tint="@color/md_theme_on_primary" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_devtools"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_info"
+            app:iconSize="20dp"
+            app:iconPadding="0dp" />
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

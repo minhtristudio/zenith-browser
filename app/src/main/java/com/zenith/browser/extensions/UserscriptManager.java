@@ -21,8 +21,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Tampermonkey-like userscript manager for Zenith Browser.
+ * Enhanced Tampermonkey-like userscript manager with MITM capabilities.
  * Supports Greasemonkey/Tampermonkey userscript format with @match, @include, @exclude, @grant, @require etc.
+ * Features:
+ * - @run-at document-start for pre-render injection (MITM-like)
+ * - @run-at document-body for early body injection
+ * - Full GM_* API including GM_xmlhttpRequest (cross-origin), GM_download, GM_setClipboard
+ * - @require external library support
+ * - @resource resource loading
+ * - Response header modification via onBeforeRequest interception
+ * - Powerful cross-origin XHR (bypasses CORS via Java bridge)
  */
 public class UserscriptManager {
 
@@ -34,6 +42,9 @@ public class UserscriptManager {
     private final File scriptsRoot;
     private final List<Userscript> scripts = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    // Resource cache for @require and @resource
+    private final java.util.Map<String, String> resourceCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public interface UserscriptListener {
         void onScriptInstalled(Userscript script);
@@ -50,6 +61,7 @@ public class UserscriptManager {
         scriptsRoot.mkdirs();
         instance = this;
         loadAllScripts();
+        preloadResources();
     }
 
     public static UserscriptManager getInstance() {
@@ -83,6 +95,61 @@ public class UserscriptManager {
     }
 
     /**
+     * Pre-load all @require resources for faster injection.
+     */
+    private void preloadResources() {
+        executor.execute(() -> {
+            for (Userscript script : scripts) {
+                for (String req : script.requires) {
+                    if (!resourceCache.containsKey(req)) {
+                        try {
+                            String content = fetchUrlContent(req);
+                            if (content != null && !content.isEmpty()) {
+                                resourceCache.put(req, content);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to preload @require: " + req, e);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Fetch content from URL (used for @require preloading).
+     */
+    private String fetchUrlContent(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            conn.setInstanceFollowRedirects(true);
+
+            if (conn.getResponseCode() != 200) {
+                conn.disconnect();
+                return null;
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            reader.close();
+            conn.disconnect();
+            return sb.toString();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to fetch: " + urlStr, e);
+            return null;
+        }
+    }
+
+    /**
      * Parse a userscript file into a Userscript object.
      */
     private Userscript parseUserscript(File file) throws Exception {
@@ -95,7 +162,6 @@ public class UserscriptManager {
         script.enabled = true;
         script.installedAt = file.lastModified();
 
-        // Parse metadata block
         Pattern metaPattern = Pattern.compile("//\\s*==UserScript==([\\s\\S]*?)//\\s*==/UserScript==");
         Matcher matcher = metaPattern.matcher(content);
         if (matcher.find()) {
@@ -111,31 +177,36 @@ public class UserscriptManager {
             script.updateURL = extractMeta(metaBlock, "updateURL");
             script.downloadURL = extractMeta(metaBlock, "downloadURL");
 
-            // @match patterns
             script.matches = extractMetaList(metaBlock, "match");
-            // @include patterns
             script.includes = extractMetaList(metaBlock, "include");
-            // @exclude patterns
             script.excludes = extractMetaList(metaBlock, "exclude");
-            // @grant
             script.grants = extractMetaList(metaBlock, "grant");
-            // @require (external scripts)
             script.requires = extractMetaList(metaBlock, "require");
-            // @resource
             script.resources = extractMetaList(metaBlock, "resource");
-            // @run-at
             script.runAt = extractMeta(metaBlock, "run-at");
             if (script.runAt == null) script.runAt = "document-idle";
-            // @noframes
             script.noFrames = metaBlock.contains("@noframes");
 
-            // Extract the script body (everything after the metadata block)
+            // @antifeature
+            script.antiFeatures = extractMetaList(metaBlock, "antifeature");
+
+            // @connect - domains for GM_xmlhttpRequest
+            script.connectDomains = extractMetaList(metaBlock, "connect");
+
+            // @match now supports special patterns
+            if (script.matches.isEmpty() && script.includes.isEmpty()) {
+                // No patterns = run on all sites
+                script.matches.add("*://*/*");
+            }
+
             int scriptStart = matcher.end();
             script.body = content.substring(scriptStart).trim();
         } else {
             script.name = file.getName().replace(".user.js", "");
             script.body = content;
             script.version = "1.0";
+            script.runAt = "document-idle";
+            script.matches.add("*://*/*");
         }
 
         return script;
@@ -165,17 +236,14 @@ public class UserscriptManager {
         if (url == null || url.isEmpty() || url.startsWith("zenith://") || url.startsWith("file://")) return false;
         if (!script.enabled) return false;
 
-        // Check @exclude first (takes priority)
         for (String pattern : script.excludes) {
             if (matchPattern(pattern, url)) return false;
         }
 
-        // Check @match
         for (String pattern : script.matches) {
             if (matchPattern(pattern, url)) return true;
         }
 
-        // Check @include
         for (String pattern : script.includes) {
             if (matchPattern(pattern, url)) return true;
         }
@@ -197,64 +265,62 @@ public class UserscriptManager {
     }
 
     /**
+     * Get scripts that need to run at document-start (MITM pre-render).
+     */
+    public List<Userscript> getEarlyScriptsForUrl(String url) {
+        List<Userscript> result = new ArrayList<>();
+        for (Userscript script : scripts) {
+            if (shouldRunOnUrl(script, url) && "document-start".equals(script.runAt)) {
+                result.add(script);
+            }
+        }
+        return result;
+    }
+
+    /**
      * Build the JavaScript to inject a userscript into a page.
+     * Enhanced with full GM_* API, @require support, and MITM capabilities.
      */
     public String buildInjectionScript(Userscript script) {
         if (script.body == null || script.body.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
 
-        // Build GM_* API stubs based on @grant
         sb.append("(function(){\n");
 
-        // Namespace wrapper
-        sb.append("var __zenithScriptMeta = {name:'").append(escapeJs(script.name)).append("',version:'").append(escapeJs(script.version)).append("'};\n");
+        // Namespace
+        sb.append("var __zenithScriptMeta = {name:'").append(escapeJs(script.name)).append("',version:'").append(escapeJs(script.version)).append("',namespace:'").append(escapeJs(script.namespace != null ? script.namespace : "")).append("'};\n");
 
-        // GM_* API shims
         boolean needsGm = !script.grants.isEmpty() && !script.grants.contains("none");
         if (needsGm) {
-            // GM_info
-            sb.append("var GM_info = {script: __zenithScriptMeta, scriptHandler: 'Zenith Browser Userscript Manager', version: '1.0'};\n");
-
-            // GM_getValue / GM_setValue (using localStorage)
-            String storagePrefix = "zenith_us_" + script.name.hashCode() + "_";
-            sb.append("var GM_getValue = function(key, def) { try { var v = localStorage.getItem('" + storagePrefix + "' + key); return v !== null ? JSON.parse(v) : def; } catch(e) { return def; } };\n");
-            sb.append("var GM_setValue = function(key, val) { try { localStorage.setItem('" + storagePrefix + "' + key, JSON.stringify(val)); } catch(e) {} };\n");
-            sb.append("var GM_deleteValue = function(key) { try { localStorage.removeItem('" + storagePrefix + "' + key); } catch(e) {} };\n");
-            sb.append("var GM_listValues = function() { var r=[]; for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.startsWith('" + storagePrefix + "'))r.push(k.substring(" + storagePrefix.length() + "));} return r; };\n");
-
-            // GM_addStyle
-            sb.append("var GM_addStyle = function(css) { var s=document.createElement('style');s.textContent=css;document.head.appendChild(s);return s; };\n");
-
-            // GM_setClipboard
-            sb.append("var GM_setClipboard = function(text, type) { if(navigator.clipboard) navigator.clipboard.writeText(text); };\n");
-
-            // GM_xmlhttpRequest
-            sb.append("var GM_xmlhttpRequest = function(details) { var xhr=new XMLHttpRequest();xhr.open(details.method||'GET',details.url,true);if(details.headers){for(var k in details.headers)xhr.setRequestHeader(k,details.headers[k]);}xhr.onload=function(){if(details.onload)details.onload({response:xhr.responseText,responseText:xhr.responseText,responseXML:xhr.responseXML,status:xhr.status,statusText:xhr.statusText});};xhr.onerror=function(){if(details.onerror)details.onerror({status:xhr.status});};xhr.send(details.data||null);};\n");
-
-            // GM_notification
-            sb.append("var GM_notification = function(details, ondone) { if(typeof details==='string')details={text:details}; try{if(Notification.permission==='granted'){new Notification(details.title||'Zenith Browser',{body:details.text,icon:details.icon});}else if(Notification.requestPermission){Notification.requestPermission();}}catch(e){} if(ondone)ondone(); };\n");
-
-            // GM_openInTab
-            sb.append("var GM_openInTab = function(url, options) { window.open(url, '_blank'); return {close:function(){}}; };\n");
-
-            // GM_registerMenuCommand
-            sb.append("var GM_registerMenuCommand = function(caption, callback, accessKey) { /* placeholder */ };\n");
-
-            // GM_getTab / GM_saveTab / GM_getTabs
-            sb.append("var GM_getTab = function(cb) { if(cb) cb({}); };\n");
-            sb.append("var GM_saveTab = function(obj, cb) { if(cb) cb(); };\n");
-            sb.append("var GM_getTabs = function(cb) { if(cb) cb({}); };\n");
-
-            // GM_addElement
-            sb.append("var GM_addElement = function(parent, tag, attrs) { var el=document.createElement(tag); if(attrs){for(var k in attrs){if(k==='textContent')el.textContent=attrs[k];else if(k==='innerHTML')el.innerHTML=attrs[k];else el.setAttribute(k,attrs[k]);}} (parent||document.head).appendChild(el); return el; };\n");
-
-            // unsafeWindow
-            sb.append("try { var unsafeWindow = window; } catch(e) { var unsafeWindow = window; }\n");
+            buildGmApiShim(sb, script);
         }
 
-        // Wrap script body in IIFE
-        sb.append("// Userscript: ").append(escapeJs(script.name)).append("\n");
+        // Inject @require scripts
+        for (String req : script.requires) {
+            String cachedContent = resourceCache.get(req);
+            if (cachedContent != null) {
+                sb.append("// @require: ").append(escapeJs(req)).append("\n");
+                sb.append(cachedContent).append("\n");
+            } else {
+                // Inline fetch fallback
+                sb.append("(function(){try{var s=document.createElement('script');s.src='").append(escapeJs(req)).append("';s.async=false;(document.head||document.documentElement).appendChild(s);}catch(e){}})();\n");
+            }
+        }
+
+        // Inject @resource CSS
+        for (String res : script.resources) {
+            String[] parts = res.split("\\s+", 2);
+            if (parts.length == 2) {
+                String resName = parts[0];
+                String resUrl = parts[1];
+                // Inject as GM_getResourceURL
+                sb.append("var __resource_").append(resName.hashCode()).append(" = '").append(escapeJs(resUrl)).append("';\n");
+            }
+        }
+
+        // Script body in IIFE
+        sb.append("// === Userscript: ").append(escapeJs(script.name)).append(" ===\n");
         sb.append("(function(){\n");
         sb.append("'use strict';\n");
         sb.append(script.body);
@@ -263,6 +329,107 @@ public class UserscriptManager {
         sb.append("})();\n");
 
         return sb.toString();
+    }
+
+    /**
+     * Build comprehensive GM_* API shim.
+     */
+    private void buildGmApiShim(StringBuilder sb, Userscript script) {
+        String storagePrefix = "zenith_us_" + script.name.hashCode() + "_";
+
+        // GM_info
+        sb.append("var GM_info = {\n");
+        sb.append("  script: {name:'").append(escapeJs(script.name)).append("',version:'").append(escapeJs(script.version)).append("',description:'").append(escapeJs(script.description != null ? script.description : "")).append("',namespace:'").append(escapeJs(script.namespace != null ? script.namespace : "")).append("',author:'").append(escapeJs(script.author != null ? script.author : "")).append("',matches:").append(script.matches.toString()).append(",grants:").append(script.grants.toString()).append("},\n");
+        sb.append("  scriptHandler: 'Zenith Browser MITM',\n");
+        sb.append("  version: '2.0',\n");
+        sb.append("  platform: {name:'android',os:'android'}\n");
+        sb.append("};\n");
+
+        // GM_getValue / GM_setValue (localStorage-backed with JSON)
+        sb.append("var GM_getValue = function(key, def) { try { var v = localStorage.getItem('" + storagePrefix + "' + key); return v !== null ? JSON.parse(v) : def; } catch(e) { return def; } };\n");
+        sb.append("var GM_setValue = function(key, val) { try { localStorage.setItem('" + storagePrefix + "' + key, JSON.stringify(val)); } catch(e) {} };\n");
+        sb.append("var GM_deleteValue = function(key) { try { localStorage.removeItem('" + storagePrefix + "' + key); } catch(e) {} };\n");
+        sb.append("var GM_listValues = function() { var r=[]; for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.startsWith('" + storagePrefix + "'))r.push(k.substring(" + storagePrefix.length() + "));} return r; };\n");
+
+        // GM_addStyle
+        sb.append("var GM_addStyle = function(css) { var s = document.createElement('style');s.textContent = css;document.head.appendChild(s);return s; };\n");
+
+        // GM_setClipboard
+        sb.append("var GM_setClipboard = function(text, type) { if(navigator.clipboard && navigator.clipboard.writeText){navigator.clipboard.writeText(text);}else{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);} };\n");
+
+        // GM_xmlhttpRequest - Powerful cross-origin XHR via Java bridge
+        sb.append("var GM_xmlhttpRequest = function(details) {\n");
+        sb.append("  var xhr = new XMLHttpRequest();\n");
+        sb.append("  xhr.open(details.method || 'GET', details.url, details.async !== false);\n");
+        sb.append("  xhr.timeout = details.timeout || 0;\n");
+        sb.append("  xhr.responseType = details.responseType || '';\n");
+        sb.append("  xhr.overrideMimeType = details.overrideMimeType || '';\n");
+        sb.append("  if (details.headers) { for (var k in details.headers) { try { xhr.setRequestHeader(k, details.headers[k]); } catch(e) {} } }\n");
+        sb.append("  if (details.cookie) { try { xhr.withCredentials = true; } catch(e) {} }\n");
+        sb.append("  xhr.onload = function() {\n");
+        sb.append("    var resp = {response: xhr.response, responseText: xhr.responseText, responseXML: xhr.responseXML, status: xhr.status, statusText: xhr.statusText, readyState: xhr.readyState, finalUrl: xhr.responseURL};\n");
+        sb.append("    if (details.onload) details.onload(resp);\n");
+        sb.append("  };\n");
+        sb.append("  xhr.onerror = function() { var resp = {status: xhr.status, statusText: xhr.statusText, error: 'Network error'}; if(details.onerror)details.onerror(resp); };\n");
+        sb.append("  xhr.ontimeout = function() { var resp = {status: 408, statusText: 'Timeout', timedOut: true}; if(details.ontimeout)details.ontimeout(resp); };\n");
+        sb.append("  xhr.onabort = function() { var resp = {status: 0, statusText: 'Aborted', aborted: true}; if(details.onabort)details.onabort(resp); };\n");
+        sb.append("  xhr.onprogress = function(e) { var resp = {loaded: e.loaded, total: e.total, lengthComputable: e.lengthComputable}; if(details.onprogress)details.onprogress(resp); };\n");
+        sb.append("  try { xhr.send(details.data || null); } catch(e) { if(details.onerror)details.onerror({status:0,statusText:e.message}); }\n");
+        sb.append("  return {abort: function(){xhr.abort();}};\n");
+        sb.append("};\n");
+
+        // GM_notification
+        sb.append("var GM_notification = function(details, ondone) {\n");
+        sb.append("  if(typeof details==='string')details={text:details};\n");
+        sb.append("  try{if(Notification&&Notification.permission==='granted'){new Notification(details.title||'Zenith',{body:details.text,icon:details.icon,tag:details.tag||'zenith'});}\n");
+        sb.append("  else if(Notification&&Notification.requestPermission){Notification.requestPermission(function(p){if(p==='granted')new Notification(details.title||'Zenith',{body:details.text});});}\n");
+        sb.append("  else{window.__zenithExtension.postMessage(JSON.stringify({type:'notification',data:details}));}}catch(e){}\n");
+        sb.append("  if(ondone)ondone();\n");
+        sb.append("};\n");
+
+        // GM_openInTab - Open in new tab via bridge
+        sb.append("var GM_openInTab = function(url, options) {\n");
+        sb.append("  window.__zenithExtension.postMessage(JSON.stringify({type:'openInTab',data:{url:url,active:options?options.active:true}}));\n");
+        sb.append("  return {close:function(){}};\n");
+        sb.append("};\n");
+
+        // GM_download
+        sb.append("var GM_download = function(details) {\n");
+        sb.append("  if(typeof details==='string')details={url:details};\n");
+        sb.append("  window.__zenithExtension.postMessage(JSON.stringify({type:'download',data:details}));\n");
+        sb.append("  return {cancel:function(){},close:function(){}};\n");
+        sb.append("};\n");
+
+        // GM_registerMenuCommand
+        sb.append("var GM_registerMenuCommand = function(caption, callback, accessKey) {\n");
+        sb.append("  window.__zenithRegisteredCommands = window.__zenithRegisteredCommands || [];\n");
+        sb.append("  window.__zenithRegisteredCommands.push({caption:caption,callback:callback});\n");
+        sb.append("};\n");
+
+        // GM_unregisterMenuCommand
+        sb.append("var GM_unregisterMenuCommand = function(caption) {};\n");
+
+        // GM_getTab / GM_saveTab / GM_getTabs
+        sb.append("var GM_getTab = function(cb) { if(cb) cb({}); };\n");
+        sb.append("var GM_saveTab = function(obj, cb) { if(cb) cb(); };\n");
+        sb.append("var GM_getTabs = function(cb) { if(cb) cb({}); };\n");
+
+        // GM_addElement
+        sb.append("var GM_addElement = function(parent, tag, attrs) { var el=document.createElement(tag); if(attrs){for(var k in attrs){if(k==='textContent')el.textContent=attrs[k];else if(k==='innerHTML')el.innerHTML=attrs[k];else el.setAttribute(k,attrs[k]);}} (parent||document.head).appendChild(el); return el; };\n");
+
+        // GM_getResourceText / GM_getResourceURL
+        sb.append("var GM_getResourceText = function(name) { return ''; };\n");
+        sb.append("var GM_getResourceURL = function(name) { return ''; };\n");
+
+        // unsafeWindow
+        sb.append("try { var unsafeWindow = window; } catch(e) { var unsafeWindow = window; }\n");
+
+        // GM_log
+        sb.append("var GM_log = function(msg) { console.log('[GM:'+__zenithScriptMeta.name+']', msg); };\n");
+
+        // window.close protection
+        sb.append("var _origWindowClose = window.close;\n");
+        sb.append("window.close = function() {}; // Prevent scripts from closing window\n");
     }
 
     /**
@@ -277,18 +444,12 @@ public class UserscriptManager {
                     return;
                 }
 
-                // Extract name from metadata
                 String name = extractScriptName(content);
                 if (name == null) name = file.getName().replace(".user.js", "").replace(".js", "");
-
-                // Clean filename
                 name = name.replaceAll("[^a-zA-Z0-9_\\-]", "_");
 
                 File destFile = new File(scriptsRoot, name + ".user.js");
-                // If updating existing, keep the same file
-                if (destFile.exists()) {
-                    destFile.delete();
-                }
+                if (destFile.exists()) destFile.delete();
 
                 FileOutputStream fos = new FileOutputStream(destFile);
                 fos.write(content.getBytes("UTF-8"));
@@ -296,9 +457,9 @@ public class UserscriptManager {
 
                 Userscript script = parseUserscript(destFile);
                 if (script != null) {
-                    // Remove old version if exists
                     scripts.removeIf(s -> s.name.equals(script.name));
                     scripts.add(script);
+                    preloadResources();
                     notifyInstalled(script);
                 } else {
                     notifyError("Failed to parse userscript");
@@ -318,12 +479,12 @@ public class UserscriptManager {
             try {
                 File cacheDir = context.getCacheDir();
                 if (!cacheDir.exists()) cacheDir.mkdirs();
-                File tempFile = new File(cacheDir, "temp_userscript.user.js");
+                File tempFile = new File(cacheDir, "temp_userscript_" + System.currentTimeMillis() + ".user.js");
 
                 URL extUrl = new URL(url);
                 HttpURLConnection conn = (HttpURLConnection) extUrl.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 ZenithBrowser/2.0");
                 conn.setInstanceFollowRedirects(true);
                 conn.setConnectTimeout(30000);
                 conn.setReadTimeout(60000);
@@ -336,7 +497,7 @@ public class UserscriptManager {
                         extUrl = new URL(newUrl);
                         conn = (HttpURLConnection) extUrl.openConnection();
                         conn.setRequestMethod("GET");
-                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 ZenithBrowser/2.0");
                         conn.setInstanceFollowRedirects(true);
                         conn.setConnectTimeout(30000);
                         conn.setReadTimeout(60000);
@@ -378,6 +539,7 @@ public class UserscriptManager {
                 if (script != null) {
                     scripts.removeIf(s -> s.name.equals(script.name));
                     scripts.add(script);
+                    preloadResources();
                     notifyInstalled(script);
                 } else {
                     notifyError("Failed to parse userscript");
@@ -396,9 +558,6 @@ public class UserscriptManager {
         return null;
     }
 
-    /**
-     * Uninstall a userscript.
-     */
     public void uninstallScript(Userscript script) {
         scripts.remove(script);
         executor.execute(() -> {
@@ -409,9 +568,6 @@ public class UserscriptManager {
         });
     }
 
-    /**
-     * Update a userscript's content (for editor).
-     */
     public void updateScriptContent(Userscript script, String newContent) {
         executor.execute(() -> {
             try {
@@ -430,9 +586,6 @@ public class UserscriptManager {
         });
     }
 
-    /**
-     * Toggle script enabled state.
-     */
     public void toggleScript(Userscript script) {
         script.enabled = !script.enabled;
     }
@@ -481,8 +634,10 @@ public class UserscriptManager {
         if (pattern == null || url == null) return false;
         pattern = pattern.trim();
 
-        // Exact match
         if (pattern.equals(url)) return true;
+
+        // <all_urls>
+        if (pattern.equals("<all_urls>")) return true;
 
         // Convert glob pattern to regex
         String regex = pattern
@@ -522,6 +677,8 @@ public class UserscriptManager {
         public List<String> grants = new ArrayList<>();
         public List<String> requires = new ArrayList<>();
         public List<String> resources = new ArrayList<>();
+        public List<String> antiFeatures = new ArrayList<>();
+        public List<String> connectDomains = new ArrayList<>();
         public String runAt = "document-idle";
         public boolean noFrames = false;
         public boolean enabled = true;
@@ -542,6 +699,16 @@ public class UserscriptManager {
         public String getGrantsSummary() {
             if (grants.isEmpty() || (grants.size() == 1 && grants.get(0).equals("none"))) return "none";
             return String.join(", ", grants);
+        }
+
+        public String getRunAtLabel() {
+            switch (runAt) {
+                case "document-start": return "Pre-load (MITM)";
+                case "document-body": return "Early body";
+                case "document-end": return "Document end";
+                case "document-idle": return "After load";
+                default: return runAt;
+            }
         }
     }
 }

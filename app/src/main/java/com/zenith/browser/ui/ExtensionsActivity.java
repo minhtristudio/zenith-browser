@@ -99,7 +99,7 @@ public class ExtensionsActivity extends AppCompatActivity {
             if (uri != null) {
                 try {
                     InputStream is = getContentResolver().openInputStream(uri);
-                    File tempFile = new File(getCacheDir(), "temp_extension.zip");
+                    File tempFile = new File(getCacheDir(), "temp_ext_" + System.currentTimeMillis() + ".zip");
                     java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
                     byte[] buffer = new byte[8192];
                     int len;
@@ -150,6 +150,7 @@ public class ExtensionsActivity extends AppCompatActivity {
                 if (!url.isEmpty()) {
                     Toast.makeText(this, "Downloading extension...", Toast.LENGTH_SHORT).show();
                     new Thread(() -> {
+                        File tempFile = null;
                         try {
                             // Ensure cache dir exists
                             File cacheDir = getCacheDir();
@@ -163,7 +164,8 @@ public class ExtensionsActivity extends AppCompatActivity {
                             else if (fileUrl.endsWith(".user.js")) ext = ".user.js";
                             else if (fileUrl.endsWith(".js")) ext = ".js";
 
-                            File tempFile = new File(cacheDir, "temp_extension" + ext);
+                            // Use unique temp file to avoid ENOENT race conditions
+                            tempFile = new File(cacheDir, "temp_ext_" + System.currentTimeMillis() + ext);
 
                             java.net.URL extUrl = new java.net.URL(fileUrl);
                             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) extUrl.openConnection();
@@ -211,8 +213,8 @@ public class ExtensionsActivity extends AppCompatActivity {
                             is.close();
                             conn.disconnect();
 
-                            if (tempFile.length() == 0) {
-                                tempFile.delete();
+                            if (tempFile == null || !tempFile.exists() || tempFile.length() == 0) {
+                                if (tempFile != null) tempFile.delete();
                                 runOnUiThread(() -> Toast.makeText(this, "Downloaded file is empty", Toast.LENGTH_SHORT).show());
                                 return;
                             }
@@ -227,6 +229,11 @@ public class ExtensionsActivity extends AppCompatActivity {
                         } catch (final Exception e) {
                             e.printStackTrace();
                             runOnUiThread(() -> Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                        } finally {
+                            // Clean up temp file in case of error
+                            if (tempFile != null && tempFile.exists()) {
+                                tempFile.delete();
+                            }
                         }
                     }).start();
                 }

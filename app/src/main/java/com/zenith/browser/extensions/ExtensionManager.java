@@ -50,7 +50,7 @@ public class ExtensionManager {
 
     public static ExtensionManager getInstance() {
         return instance;
- }
+    }
 
     public static ExtensionManager getInstance(Context context) {
         if (instance == null) {
@@ -76,25 +76,63 @@ public class ExtensionManager {
         });
     }
 
+    /**
+     * Install an extension from a .crx or .zip file.
+     * Properly handles both formats and preserves the original extension name.
+     */
     public void installFromFile(File file) {
+        if (file == null || !file.exists()) {
+            notifyError("File not found");
+            return;
+        }
+
         executor.execute(() -> {
             try {
-                String extName = file.getName().replace(".crx", "").replace(".zip", "");
-                File extDir = new File(extensionsRoot, extName);
+                // Determine extension name from file
+                String fileName = file.getName();
+                String baseName;
+                if (fileName.endsWith(".crx")) {
+                    baseName = fileName.substring(0, fileName.length() - 4);
+                } else if (fileName.endsWith(".zip")) {
+                    baseName = fileName.substring(0, fileName.length() - 4);
+                } else if (fileName.endsWith(".user.js")) {
+                    baseName = fileName.substring(0, fileName.length() - 8);
+                } else {
+                    baseName = fileName;
+                }
+
+                // Clean the name for filesystem
+                baseName = baseName.replaceAll("[^a-zA-Z0-9_\\-\\.]", "_");
+                if (baseName.isEmpty()) baseName = "extension_" + System.currentTimeMillis();
+
+                File extDir = new File(extensionsRoot, baseName);
 
                 // Remove existing if re-installing
                 if (extDir.exists()) deleteDirectory(extDir);
                 extDir.mkdirs();
 
-                // Extract ZIP/CRX
-                if (file.getName().endsWith(".crx")) {
+                // Extract based on file type
+                if (fileName.endsWith(".crx")) {
                     extractCrx(file, extDir);
                 } else {
-                    extractZip(file, extDir);
+                    // Handle both .zip and renamed files
+                    try {
+                        extractZip(file, extDir);
+                    } catch (Exception zipEx) {
+                        // If ZIP extraction fails, try CRX extraction (might be mislabeled)
+                        try {
+                            extractCrx(file, extDir);
+                        } catch (Exception crxEx) {
+                            deleteDirectory(extDir);
+                            throw new Exception("Failed to extract: " + zipEx.getMessage());
+                        }
+                    }
                 }
 
                 ChromeExtension ext = new ChromeExtension(extDir);
                 if (ext.loadManifest()) {
+                    // Remove old version if exists
+                    extensions.removeIf(e -> e.getName().equals(ext.getName()));
                     extensions.add(ext);
                     mainHandler.post(() -> {
                         if (listener != null) listener.onExtensionLoaded(ext);
@@ -102,7 +140,7 @@ public class ExtensionManager {
                 } else {
                     deleteDirectory(extDir);
                     mainHandler.post(() -> {
-                        if (listener != null) listener.onExtensionError("Invalid manifest.json");
+                        if (listener != null) listener.onExtensionError("Invalid manifest.json - not a valid extension");
                     });
                 }
             } catch (Exception e) {
@@ -115,20 +153,16 @@ public class ExtensionManager {
     }
 
     private void extractCrx(File crxFile, File destDir) throws Exception {
-        // CRX v3 header: 16 bytes magic + 4 bytes header length + pubkey + signature
-        // We need to find the ZIP content after the header
         byte[] header = new byte[12];
         java.io.RandomAccessFile raf = new java.io.RandomAccessFile(crxFile, "r");
         raf.readFully(header);
 
-        // Check for CRX magic
         if (header[0] == 'C' && header[1] == 'R' && header[2] == 'X') {
-            // CRX v3 format
             int headerLength = ((header[8] & 0xFF) << 24) | ((header[9] & 0xFF) << 16) |
                                ((header[10] & 0xFF) << 8) | (header[11] & 0xFF);
             raf.seek(12 + headerLength);
-            // Copy remaining as ZIP
-            java.io.FileOutputStream fos = new FileOutputStream(new File(destDir, "temp.zip"));
+            File tempZip = new File(destDir, "temp_extract.zip");
+            FileOutputStream fos = new FileOutputStream(tempZip);
             byte[] buffer = new byte[8192];
             int len;
             while ((len = raf.read(buffer)) > 0) {
@@ -136,21 +170,25 @@ public class ExtensionManager {
             }
             fos.close();
             raf.close();
-            extractZip(new File(destDir, "temp.zip"), destDir);
-            new File(destDir, "temp.zip").delete();
+            extractZip(tempZip, destDir);
+            tempZip.delete();
         } else {
             raf.close();
-            // Might just be a renamed ZIP
             extractZip(crxFile, destDir);
         }
     }
 
     private void extractZip(File zipFile, File destDir) throws Exception {
+        if (!zipFile.exists()) {
+            throw new Exception("ZIP file does not exist: " + zipFile.getAbsolutePath());
+        }
+
         ZipFile zip = new ZipFile(zipFile);
         Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
             File outFile = new File(destDir, entry.getName());
+
             // Security: prevent path traversal
             if (!outFile.getCanonicalPath().startsWith(destDir.getCanonicalPath())) continue;
 
@@ -201,10 +239,6 @@ public class ExtensionManager {
         return enabled;
     }
 
-    /**
-     * Inject content scripts from all enabled extensions into a WebView.
-     * Should be called when a page finishes loading.
-     */
     public void injectContentScripts(WebView webView, String url) {
         if (url == null || url.startsWith("zenith://") || url.startsWith("file://")) return;
 
@@ -220,9 +254,6 @@ public class ExtensionManager {
         }
     }
 
-    /**
-     * Inject extension API shim into the page for chrome.* API compatibility
-     */
     public void injectExtensionApi(WebView webView, String url) {
         if (url == null || url.startsWith("zenith://")) return;
 
@@ -239,7 +270,7 @@ public class ExtensionManager {
             "if(window.__zenithApiInjected) return;" +
             "window.__zenithApiInjected = true;" +
 
-            // chrome.runtime stub
+            // chrome.runtime
             "window.chrome = window.chrome || {};" +
             "window.chrome.runtime = window.chrome.runtime || {};" +
             "window.chrome.runtime.sendMessage = function(msg, cb) {" +
@@ -250,7 +281,7 @@ public class ExtensionManager {
             "window.chrome.runtime.getManifest = function() { return {};};" +
             "window.chrome.runtime.getURL = function(path) { return path; };" +
 
-            // chrome.storage stub
+            // chrome.storage
             "window.chrome.storage = window.chrome.storage || {};" +
             "window.chrome.storage.local = window.chrome.storage || {};" +
             "window.chrome.storage.local.get = function(keys, cb) {" +
@@ -264,14 +295,14 @@ public class ExtensionManager {
             "};" +
             "window.chrome.storage.sync = window.chrome.storage.local;" +
 
-            // chrome.tabs stub
+            // chrome.tabs
             "window.chrome.tabs = window.chrome.tabs || {};" +
             "window.chrome.tabs.query = function(info, cb) { if(cb) cb([{id:1, url: location.href, title: document.title}]); };" +
             "window.chrome.tabs.sendMessage = function(tabId, msg, cb) { if(cb) cb(); };" +
-            "window.chrome.tabs.create = function(props) { window.open(props.url, '_blank'); };" +
+            "window.chrome.tabs.create = function(props) { window.__zenithExtension.postMessage(JSON.stringify({type:'openInTab',data:props})); };" +
             "window.chrome.tabs.update = function(tabId, props, cb) { if(cb) cb(); };" +
 
-            // chrome.browserAction stub
+            // chrome.action / browserAction
             "window.chrome.action = window.chrome.action || {};" +
             "window.chrome.browserAction = window.chrome.browserAction || window.chrome.action;" +
             "window.chrome.browserAction.setBadgeText = function(){};" +
@@ -279,56 +310,46 @@ public class ExtensionManager {
             "window.chrome.browserAction.getTitle = function(cb) { if(cb) cb('');};" +
             "window.chrome.browserAction.setPopup = function(){};" +
 
-            // chrome.i18n stub
+            // chrome.i18n
             "window.chrome.i18n = window.chrome.i18n || {};" +
             "window.chrome.i18n.getMessage = function(name, subs) { return name; };" +
 
-            // chrome.bookmarks stub
+            // chrome.bookmarks
             "window.chrome.bookmarks = window.chrome.bookmarks || {};" +
             "window.chrome.bookmarks.create = function(bm, cb) { if(cb) cb({id:'1'}); };" +
             "window.chrome.bookmarks.getTree = function(cb) { if(cb) cb([]); };" +
 
-            // chrome.history stub
+            // chrome.history
             "window.chrome.history = window.chrome.history || {};" +
             "window.chrome.history.search = function(q, cb) { if(cb) cb([]); };" +
 
-            // chrome.windows stub
+            // chrome.windows
             "window.chrome.windows = window.chrome.windows || {};" +
-            "window.chrome.windows.create = function(data, cb) { window.open(data.url); if(cb) cb(); };" +
+            "window.chrome.windows.create = function(data, cb) { window.__zenithExtension.postMessage(JSON.stringify({type:'openInTab',data:data})); if(cb) cb(); };" +
             "window.chrome.windows.getCurrent = function(cb) { if(cb) cb({id:1, type:'normal'}); };" +
 
-            // chrome.webNavigation stub
+            // chrome.webNavigation
             "window.chrome.webNavigation = window.chrome.webNavigation || {};" +
             "window.chrome.webNavigation.getAllFrames = function(details, cb) { if(cb) cb([]); };" +
 
-            // chrome.webRequest stub
+            // chrome.webRequest
             "window.chrome.webRequest = window.chrome.webRequest || {};" +
             "window.chrome.webRequest.onBeforeRequest = { addListener: function(){} };" +
             "window.chrome.webRequest.onHeadersReceived = { addListener: function(){} };" +
             "window.chrome.webRequest.onCompleted = { addListener: function(){} };" +
 
-            // chrome.notifications stub
+            // chrome.notifications
             "window.chrome.notifications = window.chrome.notifications || {};" +
             "window.chrome.notifications.create = function(id, opts, cb) { if(cb) cb(id); };" +
 
-            // chrome.contextMenus stub
+            // chrome.contextMenus
             "window.chrome.contextMenus = window.chrome.contextMenus || {};" +
             "window.chrome.contextMenus.create = function(){};" +
             "window.chrome.contextMenus.onClicked = { addListener: function(){} };" +
 
-            // fetch/XHR interception for webRequest API
-            "var _origFetch = window.fetch;" +
-            "window.fetch = function(url, opts) {" +
-            "  opts = opts || {};" +
-            "  return _origFetch.apply(this, arguments);" +
-            "};" +
-
             "})();";
     }
 
-    /**
-     * Install a userscript (.user.js) via the UserscriptManager
-     */
     public void installUserscript(File file, String sourceUrl) {
         UserscriptManager usManager = UserscriptManager.getInstance(context);
         if (sourceUrl != null && !sourceUrl.isEmpty()) {
@@ -338,17 +359,35 @@ public class ExtensionManager {
         }
     }
 
-    /**
-     * JavaScript bridge for extension communication
-     */
+    private void notifyError(String error) {
+        if (listener != null) {
+            mainHandler.post(() -> listener.onExtensionError(error));
+        }
+    }
+
     public static class JsBridge {
         @JavascriptInterface
         public void postMessage(String message) {
-            // Handle messages from content scripts
             try {
                 JSONObject msg = new JSONObject(message);
-                // Process extension messages
-                Log.d("JsBridge", "Received extension message: " + message);
+                String type = msg.optString("type", "");
+
+                switch (type) {
+                    case "runtime_message":
+                        Log.d("JsBridge", "Runtime message: " + message);
+                        break;
+                    case "openInTab":
+                        Log.d("JsBridge", "Open in tab request: " + message);
+                        break;
+                    case "download":
+                        Log.d("JsBridge", "Download request: " + message);
+                        break;
+                    case "notification":
+                        Log.d("JsBridge", "Notification request: " + message);
+                        break;
+                    default:
+                        Log.d("JsBridge", "Received extension message: " + message);
+                }
             } catch (Exception e) {
                 Log.e("JsBridge", "Error parsing extension message", e);
             }
@@ -360,7 +399,7 @@ public class ExtensionManager {
                 JSONObject info = new JSONObject();
                 info.put("platform", "android");
                 info.put("browser", "ZenithBrowser");
-                info.put("version", "1.0.0");
+                info.put("version", "2.0");
                 return info.toString();
             } catch (Exception e) {
                 return "{}";

@@ -1,21 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/md_theme_surface">
+
+    <!-- Header with tab groups -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/tv_tab_count_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tabs"
+            android:textSize="18sp"
+            android:textColor="@color/md_theme_on_surface"
+            android:fontFamily="sans-serif-medium" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_create_group"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Group"
+            android:textSize="13sp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_new_tab"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_add"
+            android:src="@drawable/ic_add"
+            app:iconSize="20dp"
+            app:iconPadding="0dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_close_all"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:src="@drawable/ic_delete"
+            app:icon="@drawable/ic_delete"
+            app:iconSize="18dp"
+            app:iconPadding="0dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+    </LinearLayout>
+
+    <!-- Tab groups horizontal scroll -->
+    <HorizontalScrollView
+        android:id="@+id/group_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:visibility="gone"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/group_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:gravity="center_vertical" />
+    </HorizontalScrollView>
+
+    <View
+        android:id="@+id/group_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_color"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_tabs"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
-        android:padding="8dp" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_new_tab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:src="@drawable/ic_add"
-        android:contentDescription="@string/new_tab" />
-</FrameLayout>
+        android:padding="6dp" />
+</LinearLayout>

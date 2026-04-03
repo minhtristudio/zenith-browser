@@ -129,4 +129,23 @@
     <string name="open_from_url">Open from URL</string>
     <string name="extension_url_hint">Extension URL (.crx or .zip)</string>
     <string name="manage_extensions">Manage extensions</string>
+    <string name="open_in_new_tab">Open in new tab</string>
+    <string name="open_in_background">Open in background</string>
+    <string name="copy_link">Copy link</string>
+    <string name="copy_image_url">Copy image URL</string>
+    <string name="view_image">View image</string>
+    <string name="download_image">Download image</string>
+    <string name="open_in_group">Open in group</string>
+    <string name="create_group">Create group</string>
+    <string name="rename_group">Rename group</string>
+    <string name="delete_group">Delete group</string>
+    <string name="ungroup_tabs">Ungroup all tabs</string>
+    <string name="link_copied">Link copied</string>
+    <string name="image_url_copied">Image URL copied</string>
+    <string name="downloading_image">Downloading image…</string>
+    <string name="tab_opened_background">Tab opened in background</string>
+    <string name="no_groups">No groups yet</string>
+    <string name="tab_groups">Tab Groups</string>
+    <string name="all_tabs">All</string>
+    <string name="close_all_tabs_confirm">Close all tabs?</string>
 </resources>

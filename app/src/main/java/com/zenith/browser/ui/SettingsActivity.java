@@ -20,94 +20,154 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_settings);
-
-        if (savedInstanceState == null) {
-            getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.settings_container, new SettingsFragment())
-                .commit();
+        try {
+            setContentView(R.layout.activity_settings);
+        } catch (Exception e) {
+            finish();
+            return;
         }
 
-        findViewById(R.id.toolbar).setOnClickListener(v -> onBackPressed());
+        try {
+            if (savedInstanceState == null) {
+                getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.settings_container, new SettingsFragment())
+                    .commit();
+            }
+        } catch (Exception e) {
+            // Ignore fragment errors
+        }
+
+        try {
+            View toolbar = findViewById(R.id.toolbar);
+            if (toolbar != null) {
+                toolbar.setOnClickListener(v -> onBackPressed());
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-            setPreferencesFromResource(R.xml.preferences_settings, rootKey);
+            try {
+                setPreferencesFromResource(R.xml.preferences_settings, rootKey);
+            } catch (Exception e) {
+                return;
+            }
 
             // Search engine
-            ListPreference searchEngine = findPreference("search_engine");
-            if (searchEngine != null) {
-                searchEngine.setSummary(searchEngine.getEntry());
-                searchEngine.setOnPreferenceChangeListener((preference, newValue) -> {
-                    searchEngine.setSummary(searchEngine.getEntries()[searchEngine.findIndexOfValue(newValue.toString())]);
-                    return true;
-                });
+            try {
+                ListPreference searchEngine = findPreference("search_engine");
+                if (searchEngine != null) {
+                    searchEngine.setSummary(searchEngine.getEntry());
+                    searchEngine.setOnPreferenceChangeListener((preference, newValue) -> {
+                        searchEngine.setSummary(searchEngine.getEntries()[searchEngine.findIndexOfValue(newValue.toString())]);
+                        return true;
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore
             }
 
             // Theme
-            ListPreference theme = findPreference("theme");
-            if (theme != null) {
-                theme.setSummary(theme.getEntry());
-                theme.setOnPreferenceChangeListener((preference, newValue) -> {
-                    theme.setSummary(theme.getEntries()[theme.findIndexOfValue(newValue.toString())]);
-                    getActivity().recreate();
-                    return true;
-                });
+            try {
+                ListPreference theme = findPreference("theme");
+                if (theme != null) {
+                    theme.setSummary(theme.getEntry());
+                    theme.setOnPreferenceChangeListener((preference, newValue) -> {
+                        theme.setSummary(theme.getEntries()[theme.findIndexOfValue(newValue.toString())]);
+                        if (getActivity() != null) {
+                            getActivity().recreate();
+                        }
+                        return true;
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore
             }
 
             // Clear browsing data
-            Preference clearData = findPreference("clear_browsing_data");
-            if (clearData != null) {
-                clearData.setOnPreferenceClickListener(preference -> {
-                    // Clear cookies
-                    android.webkit.CookieManager.getInstance().removeAllCookies(null);
-                    // Clear cache
-                    WebView webView = new WebView(getContext());
-                    webView.clearCache(true);
-                    webView.clearHistory();
-                    webView.clearFormData();
-                    webView.destroy();
-                    // Clear history
-                    AppDatabase.getInstance(getContext()).clearHistory();
-                    Toast.makeText(getContext(), R.string.browsing_data_cleared, Toast.LENGTH_SHORT).show();
-                    return true;
-                });
+            try {
+                Preference clearData = findPreference("clear_browsing_data");
+                if (clearData != null) {
+                    clearData.setOnPreferenceClickListener(preference -> {
+                        try {
+                            android.webkit.CookieManager.getInstance().removeAllCookies(null);
+                            WebView webView = new WebView(getContext());
+                            webView.clearCache(true);
+                            webView.clearHistory();
+                            webView.clearFormData();
+                            webView.clearSslPreferences();
+                            webView.destroy();
+                            AppDatabase db = AppDatabase.getInstance(getContext());
+                            if (db != null) db.clearHistory();
+                            if (getContext() != null) {
+                                Toast.makeText(getContext(), R.string.browsing_data_cleared, Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception ex) {
+                            // Ignore
+                        }
+                        return true;
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore
             }
 
             // Clear cookies
-            Preference clearCookies = findPreference("clear_cookies");
-            if (clearCookies != null) {
-                clearCookies.setOnPreferenceClickListener(preference -> {
-                    android.webkit.CookieManager.getInstance().removeAllCookies(null);
-                    Toast.makeText(getContext(), R.string.cookies_enabled, Toast.LENGTH_SHORT).show();
-                    return true;
-                });
+            try {
+                Preference clearCookies = findPreference("clear_cookies");
+                if (clearCookies != null) {
+                    clearCookies.setOnPreferenceClickListener(preference -> {
+                        try {
+                            android.webkit.CookieManager.getInstance().removeAllCookies(null);
+                            if (getContext() != null) {
+                                Toast.makeText(getContext(), "Cookies cleared", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception ex) {
+                            // Ignore
+                        }
+                        return true;
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore
             }
 
             // Clear cache
-            Preference clearCache = findPreference("clear_cache");
-            if (clearCache != null) {
-                clearCache.setOnPreferenceClickListener(preference -> {
-                    WebView webView = new WebView(getContext());
-                    webView.clearCache(true);
-                    webView.destroy();
-                    Toast.makeText(getContext(), R.string.clear_cache, Toast.LENGTH_SHORT).show();
-                    return true;
-                });
+            try {
+                Preference clearCache = findPreference("clear_cache");
+                if (clearCache != null) {
+                    clearCache.setOnPreferenceClickListener(preference -> {
+                        try {
+                            WebView webView = new WebView(getContext());
+                            webView.clearCache(true);
+                            webView.destroy();
+                            if (getContext() != null) {
+                                Toast.makeText(getContext(), "Cache cleared", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception ex) {
+                            // Ignore
+                        }
+                        return true;
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore
             }
 
             // About
-            Preference about = findPreference("about");
-            if (about != null) {
-                about.setSummary("Zenith Browser v1.0.0");
-                about.setOnPreferenceClickListener(preference -> {
-                    // Could show an about dialog
-                    return true;
-                });
+            try {
+                Preference about = findPreference("about");
+                if (about != null) {
+                    about.setSummary("Zenith Browser v1.1.0");
+                    about.setOnPreferenceClickListener(preference -> true);
+                }
+            } catch (Exception e) {
+                // Ignore
             }
         }
     }

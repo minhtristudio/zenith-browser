@@ -5,110 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>New Tab</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body {
-    height:100%; width:100%; overflow:hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(160deg, #1C1B1F 0%, #2C1513 50%, #261A00 100%);
-    color: #E6E1E5;
-}
-.container {
-    display:flex; flex-direction:column; align-items:center;
-    justify-content:center; height:100%; padding:24px;
-}
-.logo {
-    width:80px; height:80px; margin-bottom:20px;
-    background: linear-gradient(135deg, #BE0D1E, #FF6B6B);
-    border-radius:20px; display:flex; align-items:center; justify-content:center;
-    box-shadow: 0 8px 32px rgba(190,13,30,0.4);
-}
-.logo svg { width:48px; height:48px; fill:white; }
-.title {
-    font-size:28px; font-weight:700; margin-bottom:24px;
-    background: linear-gradient(90deg, #FFB3AD, #FFDAD6);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    background-clip:text;
-}
-.search-box {
-    width:100%; max-width:480px; position:relative; margin-bottom:36px;
-}
-.search-input {
-    width:100%; padding:16px 20px 16px 48px;
-    background: rgba(255,255,255,0.08);
-    border:1px solid rgba(255,255,255,0.12);
-    border-radius:28px; font-size:16px; color:#E6E1E5;
-    outline:none; backdrop-filter:blur(20px);
-    transition: all 0.3s ease;
-}
-.search-input:focus {
-    background: rgba(255,255,255,0.12);
-    border-color: rgba(190,13,30,0.6);
-    box-shadow: 0 0 0 3px rgba(190,13,30,0.15);
-}
-.search-input::placeholder { color: rgba(255,255,255,0.4); }
-.search-icon {
-    position:absolute; left:16px; top:50%; transform:translateY(-50%);
-    width:20px; height:20px; opacity:0.5;
-}
-.shortcuts {
-    display:grid; grid-template-columns: repeat(4, 1fr);
-    gap:16px; width:100%; max-width:480px;
-}
-.shortcut {
-    display:flex; flex-direction:column; align-items:center;
-    padding:16px 8px; border-radius:16px; cursor:pointer;
-    background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.06);
-    transition: all 0.2s ease; text-decoration:none; color:#E6E1E5;
-}
-.shortcut:active {
-    background: rgba(190,13,30,0.15);
-    transform: scale(0.95);
-}
-.shortcut-icon {
-    width:44px; height:44px; border-radius:12px; margin-bottom:8px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:20px; font-weight:700; color:white;
-}
-.shortcut-label {
-    font-size:11px; text-align:center; opacity:0.7;
-    max-width:72px; overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap;
-}
-.footer {
-    position:fixed; bottom:16px; text-align:center;
-    font-size:12px; opacity:0.3;
-}
-@media (prefers-color-scheme: light) {
-    html, body {
-        background: linear-gradient(160deg, #FFFBFF 0%, #FFF0EE 50%, #FFF8F0 100%);
-        color: #201A1A;
-    }
-    .title {
-        background: linear-gradient(90deg, #BE0D1E, #705C2E);
-        -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-        background-clip:text;
-    }
-    .search-input {
-        background: rgba(0,0,0,0.04);
-        border-color: rgba(0,0,0,0.08);
-        color: #201A1A;
-    }
-    .search-input:focus {
-        background: rgba(0,0,0,0.06);
-        border-color: rgba(190,13,30,0.3);
-    }
-    .search-input::placeholder { color: rgba(0,0,0,0.3); }
-    .search-icon { opacity:0.4; }
-    .shortcut {
-        background: rgba(0,0,0,0.03);
-        border-color: rgba(0,0,0,0.06);
-        color: #201A1A;
-    }
-    .shortcut:active {
-        background: rgba(190,13,30,0.08);
-    }
-    .shortcut-label { opacity:0.6; }
-    .footer { opacity:0.2; color:#201A1A; }
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;width:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(160deg,#1A1111 0%,#2C1513 40%,#1C1B1F 100%);color:#F1DEDC}
+.container{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;padding:32px 20px 20px}
+.logo{width:64px;height:64px;margin-bottom:12px;background:linear-gradient(135deg,#BE0D1E,#FF4757);border-radius:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(190,13,30,0.5);animation:logoFloat 3s ease-in-out infinite}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.logo svg{width:36px;height:36px;fill:white}
+.title{font-size:22px;font-weight:700;margin-bottom:20px;background:linear-gradient(90deg,#FFB3AD,#DCC28A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.3px}
+.search-box{width:100%;max-width:420px;position:relative;margin-bottom:28px}
+.search-input{width:100%;padding:14px 18px 14px 44px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.08);border-radius:24px;font-size:15px;color:#F1DEDC;outline:none;backdrop-filter:blur(20px);transition:all 0.3s ease}
+.search-input:focus{background:rgba(255,255,255,0.1);border-color:rgba(190,13,30,0.5);box-shadow:0 0 0 3px rgba(190,13,30,0.12)}
+.search-input::placeholder{color:rgba(255,255,255,0.35)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;opacity:0.45}
+.shortcuts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;max-width:420px}
+.shortcut{display:flex;flex-direction:column;align-items:center;padding:14px 6px;border-radius:16px;cursor:pointer;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.05);transition:all 0.2s ease;text-decoration:none;color:#F1DEDC}
+.shortcut:active{background:rgba(190,13,30,0.15);transform:scale(0.95)}
+.shortcut-icon{width:42px;height:42px;border-radius:12px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.shortcut-label{font-size:10.5px;text-align:center;opacity:0.65;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{margin-top:auto;padding-top:20px;text-align:center}
+.stats-row{display:flex;justify-content:center;gap:24px;margin-bottom:8px}
+.stat-item{text-align:center}
+.stat-value{font-size:18px;font-weight:700;color:#DCC28A}
+.stat-label{font-size:10px;opacity:0.4;margin-top:2px}
+@media(prefers-color-scheme:light){
+html,body{background:linear-gradient(160deg,#FFFBFF 0%,#FFF0EE 40%,#FDF8F5 100%);color:#201A1A}
+.title{background:linear-gradient(90deg,#BE0D1E,#705C2E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.search-input{background:rgba(0,0,0,0.03);border-color:rgba(0,0,0,0.06);color:#201A1A}
+.search-input:focus{background:rgba(0,0,0,0.05);border-color:rgba(190,13,30,0.25)}
+.search-input::placeholder{color:rgba(0,0,0,0.3)}
+.search-icon{opacity:0.35}
+.shortcut{background:rgba(0,0,0,0.02);border-color:rgba(0,0,0,0.05);color:#201A1A}
+.shortcut:active{background:rgba(190,13,30,0.06)}
+.shortcut-label{opacity:0.55}
+.stat-value{color:#705C2E}
+.stat-label{opacity:0.3;color:#201A1A}
 }
 </style>
 </head>
@@ -119,9 +49,7 @@ html, body {
     </div>
     <div class="title">Zenith Browser</div>
     <div class="search-box">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input class="search-input" type="text" placeholder="Search or enter URL..." id="searchInput" />
     </div>
     <div class="shortcuts">
@@ -130,11 +58,11 @@ html, body {
             <div class="shortcut-label">Google</div>
         </a>
         <a class="shortcut" href="https://www.youtube.com">
-            <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF0000,#CC0000)">▶</div>
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF0000,#CC0000)">&#9654;</div>
             <div class="shortcut-label">YouTube</div>
         </a>
         <a class="shortcut" href="https://github.com">
-            <div class="shortcut-icon" style="background:linear-gradient(135deg,#333,#555)">⌥</div>
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#333,#555)">&#8963;</div>
             <div class="shortcut-label">GitHub</div>
         </a>
         <a class="shortcut" href="https://www.wikipedia.org">
@@ -146,7 +74,7 @@ html, body {
             <div class="shortcut-label">Reddit</div>
         </a>
         <a class="shortcut" href="https://twitter.com">
-            <div class="shortcut-icon" style="background:linear-gradient(135deg,#1DA1F2,#0D8BD9)">𝕏</div>
+            <div class="shortcut-icon" style="background:linear-gradient(135deg,#1DA1F2,#0D8BD9)">&#120143;</div>
             <div class="shortcut-label">X</div>
         </a>
         <a class="shortcut" href="https://stackoverflow.com">
@@ -158,20 +86,21 @@ html, body {
             <div class="shortcut-label">HackerNews</div>
         </a>
     </div>
+    <div class="stats">
+        <div class="stats-row">
+            <div class="stat-item"><div class="stat-value" id="tabCount">0</div><div class="stat-label">Tabs</div></div>
+            <div class="stat-item"><div class="stat-value" id="extCount">0</div><div class="stat-label">Extensions</div></div>
+            <div class="stat-item"><div class="stat-value" id="scriptCount">0</div><div class="stat-label">Scripts</div></div>
+        </div>
+    </div>
 </div>
-<div class="footer">Zenith Browser v1.0</div>
 <script>
-document.getElementById('searchInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && this.value.trim()) {
-        var q = this.value.trim();
-        if (/^(https?:\/\/|www\.)/.test(q)) {
-            if (q.startsWith('www.')) q = 'https://' + q;
-            window.location.href = q;
-        } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(q)) {
-            window.location.href = 'https://' + q;
-        } else {
-            window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-        }
+document.getElementById('searchInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&this.value.trim()){
+        var q=this.value.trim();
+        if(/^(https?:\/\/|www\.)/.test(q)){if(q.startsWith('www.'))q='https://'+q;window.location.href=q}
+        else if(/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(q)){window.location.href='https://'+q}
+        else{window.location.href='https://www.google.com/search?q='+encodeURIComponent(q)}
     }
 });
 document.getElementById('searchInput').focus();

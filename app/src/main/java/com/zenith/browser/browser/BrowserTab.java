@@ -19,6 +19,12 @@ public class BrowserTab {
         NORMAL, INCOGNITO, NEW_TAB
     }
 
+    // Tab group colors
+    public static final int[] GROUP_COLORS = {
+        0xFFBE0D1E, 0xFF705C2E, 0xFF1B6B3A, 0xFF1565C0,
+        0xFF6A1B9A, 0xFFE65100, 0xFF00838F, 0xFF4E342E
+    };
+
     private final String id;
     private final WebView webView;
     private final TabType type;
@@ -28,6 +34,15 @@ public class BrowserTab {
     private boolean isLoading = false;
     private boolean isDesktopMode = false;
     private final long createdAt;
+
+    // Tab group support
+    private String groupName = null;
+    private int groupColor = 0xFFBE0D1E;
+
+    // Long-press context menu data
+    private String hitResultUrl = null;     // Link URL
+    private String hitResultImageUrl = null; // Image URL
+    private String hitResultTitle = null;   // Image title/alt
 
     public BrowserTab(Context context, TabType type, TabListener listener) {
         this.id = UUID.randomUUID().toString();
@@ -54,6 +69,43 @@ public class BrowserTab {
 
         webView.setWebViewClient(new TabWebViewClient(listener));
         webView.setWebChromeClient(new TabChromeClient(listener));
+
+        // Enable long-press for context menu
+        webView.setLongClickable(true);
+        webView.setOnLongClickListener(v -> {
+            // Get hit test result
+            android.webkit.WebView.HitTestResult result = ((WebView) v).getHitTestResult();
+            if (result != null && listener != null) {
+                int type = result.getType();
+                if (type == android.webkit.WebView.HitTestResult.SRC_ANCHOR_TYPE ||
+                    type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                    String linkUrl = result.getExtra();
+                    if (linkUrl != null && !linkUrl.isEmpty()) {
+                        Object tag = v.getTag();
+                        if (tag instanceof BrowserTab) {
+                            hitResultUrl = linkUrl;
+                            hitResultImageUrl = (type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) ? linkUrl : null;
+                            listener.onLongPressLink((BrowserTab) tag, linkUrl);
+                        }
+                        return true;
+                    }
+                }
+                if (type == android.webkit.WebView.HitTestResult.IMAGE_TYPE ||
+                    type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                    String imageUrl = result.getExtra();
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        Object tag = v.getTag();
+                        if (tag instanceof BrowserTab) {
+                            hitResultImageUrl = imageUrl;
+                            hitResultUrl = (type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) ? imageUrl : null;
+                            listener.onLongPressImage((BrowserTab) tag, imageUrl);
+                        }
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
 
         // Extension JavaScript interface
         webView.addJavascriptInterface(new ExtensionManager.JsBridge(), "__zenithExtension");
@@ -143,6 +195,18 @@ public class BrowserTab {
     public boolean canGoBack() { return webView.canGoBack(); }
     public boolean canGoForward() { return webView.canGoForward(); }
 
+    // Tab group
+    public String getGroupName() { return groupName; }
+    public void setGroupName(String name) { this.groupName = name; }
+    public int getGroupColor() { return groupColor; }
+    public void setGroupColor(int color) { this.groupColor = color; }
+    public boolean isInGroup() { return groupName != null && !groupName.isEmpty(); }
+
+    // Hit test results
+    public String getHitResultUrl() { return hitResultUrl; }
+    public String getHitResultImageUrl() { return hitResultImageUrl; }
+    public String getHitResultTitle() { return hitResultTitle; }
+
     public interface TabListener {
         void onTitleChanged(BrowserTab tab, String title);
         void onUrlChanged(BrowserTab tab, String url);
@@ -157,6 +221,9 @@ public class BrowserTab {
         void onHideCustomView(BrowserTab tab);
         void onConsoleMessage(BrowserTab tab, String message, int lineNumber, String sourceId);
         void onPageIconChanged(BrowserTab tab, Bitmap icon);
+        // Context menu callbacks
+        void onLongPressLink(BrowserTab tab, String url);
+        void onLongPressImage(BrowserTab tab, String imageUrl);
     }
 
     private static class TabWebViewClient extends WebViewClient {
@@ -192,7 +259,7 @@ public class BrowserTab {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-            return false; // Let WebView handle all URLs
+            return false;
         }
 
         @Override
@@ -271,8 +338,6 @@ public class BrowserTab {
         @Override
         public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
             if (listener != null) {
-                Object tag = null;
-                // Don't crash if we can't get the tab
                 listener.onConsoleMessage(null,
                     consoleMessage.message(), consoleMessage.lineNumber(), consoleMessage.sourceId());
             }
@@ -281,7 +346,6 @@ public class BrowserTab {
 
         @Override
         public void onShowCustomView(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {
-            // Store custom view (e.g., fullscreen video)
         }
 
         @Override
@@ -291,7 +355,7 @@ public class BrowserTab {
         @Override
         public boolean onShowFileChooser(WebView webView, android.webkit.ValueCallback<android.net.Uri[]> filePathCallback,
                                           android.webkit.WebChromeClient.FileChooserParams fileChooserParams) {
-            return false; // Can be extended with file chooser dialog
+            return false;
         }
 
         @Override
@@ -319,7 +383,6 @@ public class BrowserTab {
 
         @Override
         public void onPermissionRequest(final android.webkit.PermissionRequest request) {
-            // Grant all permissions for full web compatibility
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 request.grant(request.getResources());
             }

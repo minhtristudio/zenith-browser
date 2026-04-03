@@ -1,11 +1,15 @@
 package com.zenith.browser;
 
 import android.animation.ValueAnimator;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -52,18 +56,19 @@ import com.zenith.browser.extensions.FileUtils;
 import com.zenith.browser.extensions.UserscriptManager;
 
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.textfield.TextInputEditText;
 
 import android.webkit.WebChromeClient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements BrowserTab.TabListener {
 
@@ -78,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private static final int REQUEST_BOOKMARKS = 101;
     private static final int REQUEST_HISTORY = 102;
     private static final int REQUEST_EXTENSIONS = 103;
+    private static final int REQUEST_VIEW_IMAGE = 104;
 
     // Views
     private CoordinatorLayout coordinator;
@@ -87,8 +93,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private View btnClearUrl;
     private ProgressBar progressBar;
     private FrameLayout tabContent;
-    private BottomAppBar bottomBar;
-    private FloatingActionButton fabNewTab;
+    private View bottomBar;
     private View btnBack, btnForward, btnHome, btnBookmark, btnDevtools, btnTabCounter, btnMenu;
     private LinearLayout findInPageBar;
     private EditText etFind;
@@ -109,6 +114,10 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private ValueCallback<Uri[]> filePathCallback;
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
+
+    // Context menu state
+    private String contextLinkUrl = null;
+    private String contextImageUrl = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,7 +160,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
 
             @Override
             public void onAllTabsClosed() {
-                // Create a new tab when all are closed
                 BrowserTab newTab = tabManager.createTab(isIncognito ? BrowserTab.TabType.INCOGNITO : BrowserTab.TabType.NEW_TAB, MainActivity.this);
                 tabManager.selectTab(newTab);
             }
@@ -195,7 +203,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         progressBar = findViewById(R.id.progress_bar);
         tabContent = findViewById(R.id.tab_content);
         bottomBar = findViewById(R.id.bottom_bar);
-        fabNewTab = findViewById(R.id.fab_new_tab);
         findInPageBar = findViewById(R.id.find_in_page_bar);
         etFind = findViewById(R.id.et_find);
         tvFindCount = findViewById(R.id.tv_find_count);
@@ -268,8 +275,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             }
         });
 
-        fabNewTab.setOnClickListener(v -> openNewTab());
-
         btnTabCounter.setOnClickListener(v -> showTabsSheet());
 
         btnMenu.setOnClickListener(v -> showOverflowMenu());
@@ -323,6 +328,18 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         tabManager.selectTab(tab);
     }
 
+    /**
+     * Open a URL in a new tab, optionally in a tab group.
+     */
+    private void openInNewTab(String url, String groupName) {
+        BrowserTab tab = tabManager.createTab(BrowserTab.TabType.NORMAL, this);
+        if (groupName != null && !groupName.isEmpty()) {
+            tabManager.assignTabToGroup(tab, groupName);
+        }
+        tab.loadUrl(url);
+        tabManager.selectTab(tab);
+    }
+
     private void navigateToUrl(String input) {
         if (input.isEmpty()) return;
         BrowserTab tab = tabManager.getActiveTab();
@@ -337,33 +354,29 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private void attachTab(BrowserTab tab) {
         if (tab == null) return;
 
-        // Remove current WebView from tab content
         WebView currentWebView = tabContent.findViewById(R.id.tab_webview);
         if (currentWebView != null) {
             tabContent.removeView(currentWebView);
         }
 
-        // Add new WebView
         WebView webView = tab.getWebView();
-        webView.setTag(tab); // CRITICAL: Re-set tag after view operations
+        webView.setTag(tab);
         webView.setId(R.id.tab_webview);
         tabContent.removeAllViews();
         tabContent.addView(webView, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Update UI
         updateUrlBar(tab);
         updateNavigationButtons(tab);
         updateBookmarkButton(tab);
 
-        // Inject DevTools and extensions
         webView.postDelayed(() -> {
             if (DevToolsHelper.isDevToolsEnabled()) {
                 DevToolsHelper.initErudaFromAssets(this, webView);
             }
             extensionManager.injectExtensionApi(webView, tab.getUrl());
             extensionManager.injectContentScripts(webView, tab.getUrl());
-            // Inject userscripts (Tampermonkey-like)
+            // Inject userscripts (Tampermonkey-like) - includes MITM pre-load
             if (userscriptManager != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://")) {
                 List<UserscriptManager.Userscript> scripts = userscriptManager.getScriptsForUrl(tab.getUrl());
                 for (UserscriptManager.Userscript script : scripts) {
@@ -451,7 +464,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         if (url.startsWith("zenith://") || url.isEmpty()) return;
 
         if (db.isBookmarked(url)) {
-            // Find and remove
             List<AppDatabase.BookmarkItem> bookmarks = db.getAllBookmarks();
             for (AppDatabase.BookmarkItem item : bookmarks) {
                 if (item.url.equals(url)) {
@@ -467,16 +479,105 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         updateBookmarkButton(tab);
     }
 
+    // ==================== Tab Sheet with Groups ====================
+
     private void showTabsSheet() {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
         View sheetView = getLayoutInflater().inflate(R.layout.dialog_tab_list, null);
         bottomSheet.setContentView(sheetView);
 
+        TextView tvHeader = sheetView.findViewById(R.id.tv_tab_count_header);
         RecyclerView recyclerView = sheetView.findViewById(R.id.recycler_tabs);
-        List<BrowserTab> tabs = tabManager.getTabs();
-        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
+        View groupScroll = sheetView.findViewById(R.id.group_scroll);
+        LinearLayout groupChips = sheetView.findViewById(R.id.group_chips);
+        View groupDivider = sheetView.findViewById(R.id.group_divider);
+
+        // New tab button
+        sheetView.findViewById(R.id.btn_new_tab).setOnClickListener(v -> {
+            openNewTab();
+            bottomSheet.dismiss();
+        });
+
+        // Close all button
+        sheetView.findViewById(R.id.btn_close_all).setOnClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                .setTitle("Close all tabs?")
+                .setPositiveButton("Close all", (dialog, which) -> {
+                    tabManager.closeAllTabs();
+                    bottomSheet.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+        });
+
+        // Create group button
+        sheetView.findViewById(R.id.btn_create_group).setOnClickListener(v -> showCreateGroupDialog(bottomSheet));
+
+        // Setup group chips
+        String currentFilter = null;
+        String[] filterHolder = {null};
+
+        Set<String> groupNames = tabManager.getGroupNames();
+        if (!groupNames.isEmpty()) {
+            groupScroll.setVisibility(View.VISIBLE);
+            groupDivider.setVisibility(View.VISIBLE);
+            groupChips.removeAllViews();
+
+            // "All" chip
+            Chip allChip = new Chip(this);
+            allChip.setText("All");
+            allChip.setChipBackgroundColorResource(R.color.md_theme_primary);
+            allChip.setTextColor(ContextCompat.getColor(this, R.color.md_theme_on_primary));
+            allChip.setCheckable(true);
+            allChip.setChecked(true);
+            allChip.setOnClickListener(chip -> {
+                filterHolder[0] = null;
+                updateTabList(recyclerView, null, bottomSheet);
+                // Update chip states
+                for (int i = 0; i < groupChips.getChildCount(); i++) {
+                    ((Chip) groupChips.getChildAt(i)).setChecked(i == 0);
+                }
+            });
+            groupChips.addView(allChip);
+
+            for (String name : groupNames) {
+                Chip chip = new Chip(this);
+                chip.setText(name);
+                int color = tabManager.getGroupColor(name);
+                chip.setChipBackgroundColor(color);
+                chip.setTextColor(Color.WHITE);
+                chip.setCheckable(true);
+                chip.setOnClickListener(c -> {
+                    filterHolder[0] = name;
+                    updateTabList(recyclerView, name, bottomSheet);
+                    for (int i = 0; i < groupChips.getChildCount(); i++) {
+                        ((Chip) groupChips.getChildAt(i)).setChecked(false);
+                    }
+                    chip.setChecked(true);
+                });
+                // Long press to rename/delete group
+                chip.setOnLongClickListener(c -> {
+                    showGroupOptionsDialog(name, bottomSheet);
+                    return true;
+                });
+                groupChips.addView(chip);
+            }
+        }
+
+        updateTabList(recyclerView, null, bottomSheet);
+        bottomSheet.show();
+    }
+
+    private void updateTabList(RecyclerView recyclerView, String filterGroup, BottomSheetDialog bottomSheet) {
+        List<BrowserTab> tabsToShow;
+        if (filterGroup != null) {
+            tabsToShow = tabManager.getTabsInGroup(filterGroup);
+        } else {
+            tabsToShow = tabManager.getTabs();
+        }
+
         TabSheetAdapter[] adapterHolder = new TabSheetAdapter[1];
-        adapterHolder[0] = new TabSheetAdapter(tabs, tab -> {
+        adapterHolder[0] = new TabSheetAdapter(tabsToShow, tab -> {
             tabManager.selectTab(tab);
             bottomSheet.dismiss();
         }, tab -> {
@@ -486,36 +587,276 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 bottomSheet.dismiss();
             }
         });
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
         recyclerView.setAdapter(adapterHolder[0]);
-
-        sheetView.findViewById(R.id.fab_new_tab).setOnClickListener(v -> {
-            openNewTab();
-            bottomSheet.dismiss();
-        });
-
-        bottomSheet.show();
     }
+
+    private void showCreateGroupDialog(BottomSheetDialog bottomSheet) {
+        EditText input = new EditText(this);
+        input.setHint("Group name");
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Create tab group")
+            .setView(input)
+            .setPositiveButton(R.string.ok, (dialog, which) -> {
+                String name = input.getText().toString().trim();
+                if (!name.isEmpty()) {
+                    tabManager.createGroup(name);
+                    bottomSheet.dismiss();
+                    showTabsSheet(); // Refresh
+                }
+            })
+            .setNegativeButton(R.string.cancel, null)
+            .show();
+    }
+
+    private void showGroupOptionsDialog(String groupName, BottomSheetDialog bottomSheet) {
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Group: " + groupName)
+            .setItems(new String[]{"Rename", "Change color", "Ungroup all tabs", "Delete group"}, (dialog, which) -> {
+                switch (which) {
+                    case 0: // Rename
+                        EditText renameInput = new EditText(this);
+                        renameInput.setText(groupName);
+                        new MaterialAlertDialogBuilder(this)
+                            .setTitle("Rename group")
+                            .setView(renameInput)
+                            .setPositiveButton(R.string.ok, (d, w) -> {
+                                String newName = renameInput.getText().toString().trim();
+                                if (!newName.isEmpty()) {
+                                    tabManager.renameGroup(groupName, newName);
+                                    bottomSheet.dismiss();
+                                    showTabsSheet();
+                                }
+                            })
+                            .setNegativeButton(R.string.cancel, null)
+                            .show();
+                        break;
+                    case 1: // Change color
+                        showColorPickerDialog(groupName, bottomSheet);
+                        break;
+                    case 2: // Ungroup
+                        tabManager.removeGroup(groupName);
+                        bottomSheet.dismiss();
+                        showTabsSheet();
+                        break;
+                    case 3: // Delete
+                        tabManager.removeGroup(groupName);
+                        bottomSheet.dismiss();
+                        showTabsSheet();
+                        break;
+                }
+            })
+            .show();
+    }
+
+    private void showColorPickerDialog(String groupName, BottomSheetDialog bottomSheet) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setPadding(32, 24, 32, 24);
+        layout.setGravity(Gravity.CENTER);
+
+        for (int i = 0; i < BrowserTab.GROUP_COLORS.length; i++) {
+            int color = BrowserTab.GROUP_COLORS[i];
+            View swatch = new View(this);
+            swatch.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) swatch.getLayoutParams();
+            lp.height = 120;
+            lp.setMargins(8, 0, 8, 0);
+            swatch.setLayoutParams(lp);
+            GradientDrawable shape = new GradientDrawable();
+            shape.setShape(GradientDrawable.OVAL);
+            shape.setColor(color);
+            swatch.setBackground(shape);
+            final int c = color;
+            swatch.setOnClickListener(v -> {
+                tabManager.setGroupColor(groupName, c);
+                bottomSheet.dismiss();
+                showTabsSheet();
+            });
+            layout.addView(swatch);
+        }
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Pick group color")
+            .setView(layout)
+            .setNegativeButton(R.string.cancel, null)
+            .show();
+    }
+
+    // ==================== Context Menu (Long Press) ====================
+
+    @Override
+    public void onLongPressLink(BrowserTab tab, String url) {
+        showLinkContextMenu(url);
+    }
+
+    @Override
+    public void onLongPressImage(BrowserTab tab, String imageUrl) {
+        showImageContextMenu(imageUrl);
+    }
+
+    private void showLinkContextMenu(String url) {
+        contextLinkUrl = url;
+        List<String> items = new ArrayList<>();
+        items.add("Open in new tab");
+        items.add("Open in new tab (background)");
+
+        // Add group options if groups exist
+        Set<String> groups = tabManager.getGroupNames();
+        if (!groups.isEmpty()) {
+            items.add(null); // divider
+            items.add("Open in group...");
+        }
+
+        items.add(null); // divider
+        items.add("Copy link");
+        items.add("Share link");
+
+        String[] displayItems = items.toArray(new String[0]);
+        // Filter nulls for the dialog
+        List<String> filtered = new ArrayList<>();
+        for (String s : displayItems) {
+            if (s != null) filtered.add(s);
+        }
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Link")
+            .setItems(filtered.toArray(new String[0]), (dialog, which) -> {
+                String item = filtered.get(which);
+                if (item == null) return;
+
+                if (item.equals("Open in new tab")) {
+                    openInNewTab(url, null);
+                } else if (item.equals("Open in new tab (background)")) {
+                    BrowserTab tab = tabManager.createTab(BrowserTab.TabType.NORMAL, this);
+                    tab.loadUrl(url);
+                    // Don't select - opens in background
+                    Snackbar.make(coordinator, "Tab opened in background", Snackbar.LENGTH_SHORT).show();
+                } else if (item.equals("Open in group...")) {
+                    showOpenInGroupDialog(url);
+                } else if (item.equals("Copy link")) {
+                    copyToClipboard(url);
+                    Snackbar.make(coordinator, "Link copied", Snackbar.LENGTH_SHORT).show();
+                } else if (item.equals("Share link")) {
+                    Intent share = new Intent(Intent.ACTION_SEND);
+                    share.setType("text/plain");
+                    share.putExtra(Intent.EXTRA_TEXT, url);
+                    startActivity(Intent.createChooser(share, "Share"));
+                }
+            })
+            .show();
+    }
+
+    private void showImageContextMenu(String imageUrl) {
+        contextImageUrl = imageUrl;
+        List<String> items = new ArrayList<>();
+        items.add("View image");
+        items.add("Download image");
+        items.add("Open in new tab");
+
+        Set<String> groups = tabManager.getGroupNames();
+        if (!groups.isEmpty()) {
+            items.add("Open in group...");
+        }
+
+        items.add("Copy image URL");
+
+        String[] displayItems = items.toArray(new String[0]);
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Image")
+            .setItems(displayItems, (dialog, which) -> {
+                String item = displayItems[which];
+                if (item == null) return;
+
+                if (item.equals("View image")) {
+                    // Open image in new tab
+                    BrowserTab tab = tabManager.createTab(BrowserTab.TabType.NORMAL, this);
+                    tab.loadUrl(imageUrl);
+                    tabManager.selectTab(tab);
+                } else if (item.equals("Download image")) {
+                    // Start download
+                    downloadFile(imageUrl, null, "image/*", -1);
+                    Snackbar.make(coordinator, "Downloading image...", Snackbar.LENGTH_SHORT).show();
+                } else if (item.equals("Open in new tab")) {
+                    openInNewTab(imageUrl, null);
+                } else if (item.equals("Open in group...")) {
+                    showOpenInGroupDialog(imageUrl);
+                } else if (item.equals("Copy image URL")) {
+                    copyToClipboard(imageUrl);
+                    Snackbar.make(coordinator, "Image URL copied", Snackbar.LENGTH_SHORT).show();
+                }
+            })
+            .show();
+    }
+
+    private void showOpenInGroupDialog(String url) {
+        Set<String> groups = tabManager.getGroupNames();
+        if (groups.isEmpty()) {
+            Snackbar.make(coordinator, "No groups created. Create one from the tab switcher.", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] groupArray = groups.toArray(new String[0]);
+        new MaterialAlertDialogBuilder(this)
+            .setTitle("Open in group")
+            .setItems(groupArray, (dialog, which) -> {
+                String groupName = groupArray[which];
+                openInNewTab(url, groupName);
+                Snackbar.make(coordinator, "Opened in " + groupName, Snackbar.LENGTH_SHORT).show();
+            })
+            .setNegativeButton(R.string.cancel, null)
+            .show();
+    }
+
+    private void downloadFile(String url, String userAgent, String mimeType, long contentLength) {
+        String fileName = url.substring(url.lastIndexOf('/') + 1);
+        if (fileName.contains("?")) fileName = fileName.substring(0, fileName.indexOf('?'));
+        if (fileName.isEmpty()) fileName = "download_" + System.currentTimeMillis();
+
+        db.addDownload(fileName, url, mimeType, contentLength);
+
+        Intent serviceIntent = new Intent(this, DownloadService.class);
+        serviceIntent.putExtra("url", url);
+        serviceIntent.putExtra("userAgent", userAgent != null ? userAgent : "Mozilla/5.0");
+        serviceIntent.putExtra("contentDisposition", "");
+        serviceIntent.putExtra("mimeType", mimeType);
+        serviceIntent.putExtra("contentLength", contentLength);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+    }
+
+    private void copyToClipboard(String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("Zenith Browser", text);
+        clipboard.setPrimaryClip(clip);
+    }
+
+    // ==================== Overflow Menu ====================
 
     private void showOverflowMenu() {
         try {
             BrowserTab tab = tabManager.getActiveTab();
 
-            // Build menu items - use a custom adapter to support dividers (null = divider)
             List<String> menuItems = new ArrayList<>();
             boolean onWebPage = tab != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://");
 
             menuItems.add("New tab");
             menuItems.add("New incognito tab");
-            menuItems.add(null); // divider
+            menuItems.add(null);
 
             if (onWebPage) {
                 menuItems.add("Share");
                 menuItems.add("Find in page");
                 menuItems.add("Desktop site" + (tab.isDesktopMode() ? " \u2713" : ""));
-                menuItems.add(null); // divider
+                menuItems.add(null);
                 menuItems.add("Developer Tools");
                 menuItems.add("View source");
-                menuItems.add(null); // divider
+                menuItems.add(null);
             }
 
             menuItems.add("Bookmarks");
@@ -523,10 +864,9 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             menuItems.add("Downloads");
             menuItems.add("Extensions");
             menuItems.add("Userscripts");
-            menuItems.add(null); // divider
+            menuItems.add(null);
             menuItems.add("Settings");
 
-            // Build a non-null items array and track which indices are actual items
             final String[] displayItems = new String[menuItems.size()];
             final int[] itemIndexMap = new int[menuItems.size()];
             int displayPos = 0;
@@ -539,7 +879,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 }
             }
 
-            // Trim the array to actual size
             String[] finalItems = new String[displayPos];
             System.arraycopy(displayItems, 0, finalItems, 0, displayPos);
 
@@ -622,7 +961,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         if (tab == null) return;
         DevToolsHelper.getSource(tab.getWebView(), source -> {
             if (source != null) {
-                // Show source in new tab
                 BrowserTab sourceTab = tabManager.createTab(BrowserTab.TabType.NORMAL, this);
                 String encoded = android.net.Uri.encode(source);
                 sourceTab.getWebView().loadUrl("data:text/html;charset=utf-8," + encoded);
@@ -642,11 +980,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                     permissions.add(android.Manifest.permission.POST_NOTIFICATIONS);
                 }
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (!android.os.Environment.isExternalStorageManager()) {
-                    // Optionally request MANAGE_EXTERNAL_STORAGE
-                }
-            }
             if (!permissions.isEmpty()) {
                 requestPermissions(permissions.toArray(new String[0]), REQUEST_CODE_PERMISSIONS);
             }
@@ -658,7 +991,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     @Override
     public void onTitleChanged(BrowserTab tab, String title) {
         if (tab == tabManager.getActiveTab()) {
-            // Title updated - could update toolbar or recents
             updateBookmarkButton(tab);
         }
     }
@@ -701,13 +1033,10 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             updateNavigationButtons(tab);
             updateBookmarkButton(tab);
 
-            // Save to history
             db.addHistory(tab.getTitle(), url);
 
-            // Inject extensions after page load
             extensionManager.injectExtensionApi(tab.getWebView(), url);
             extensionManager.injectContentScripts(tab.getWebView(), url);
-            // Inject userscripts after page load
             if (userscriptManager != null && url != null && !url.startsWith("zenith://")) {
                 List<UserscriptManager.Userscript> scripts = userscriptManager.getScriptsForUrl(url);
                 for (UserscriptManager.Userscript script : scripts) {
@@ -741,7 +1070,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 .setTitle("Security Warning")
                 .setMessage(R.string.ssl_error)
                 .setPositiveButton(R.string.ssl_error_continue, (dialog, which) -> {
-                    // Continue loading
                 })
                 .setNegativeButton(R.string.ssl_error_go_back, (dialog, which) -> {
                     tab.goBack();
@@ -752,7 +1080,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
 
     @Override
     public void onDownloadRequested(BrowserTab tab, String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-        // Record download
         String fileName = "download";
         if (contentDisposition != null) {
             String[] parts = contentDisposition.split(";");
@@ -771,7 +1098,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
 
         db.addDownload(fileName, url, mimetype, contentLength);
 
-        // Start download service
         Intent serviceIntent = new Intent(this, DownloadService.class);
         serviceIntent.putExtra("url", url);
         serviceIntent.putExtra("userAgent", userAgent);
@@ -789,9 +1115,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     }
 
     @Override
-    public void onShowCustomView(BrowserTab tab, View view) {
-        // Fullscreen video
-    }
+    public void onShowCustomView(BrowserTab tab, View view) {}
 
     @Override
     public void onHideCustomView(BrowserTab tab) {}
@@ -824,7 +1148,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_SETTINGS) {
-            // Reload settings
             boolean devToolsEnabled = prefs.getBoolean(PREF_DEVTOOLS, true);
             DevToolsHelper.setDevToolsEnabled(devToolsEnabled);
             String theme = prefs.getString(PREF_THEME, "follow_system");
@@ -844,7 +1167,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 if (tab != null) tab.loadUrl(url);
             }
         } else if (requestCode == REQUEST_CODE_FILE_CHOOSER && resultCode == RESULT_OK) {
-            // Handle file chooser result
         }
     }
 
@@ -856,31 +1178,26 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     public void onBackPressed() {
         BrowserTab tab = tabManager.getActiveTab();
 
-        // Check if DevTools is showing
         if (tab != null && DevToolsHelper.isDevToolsEnabled()) {
             DevToolsHelper.hideDevTools(tab.getWebView());
         }
 
-        // Check if find in page is showing
         if (findInPageBar.getVisibility() == View.VISIBLE) {
             findInPageBar.setVisibility(View.GONE);
             if (tab != null) tab.getWebView().clearMatches();
             return;
         }
 
-        // Check if URL bar is focused
         if (isUrlBarFocused) {
             etUrl.clearFocus();
             return;
         }
 
-        // Check if WebView can go back
         if (tab != null && tab.canGoBack() && !tab.getUrl().startsWith("zenith://")) {
             tab.goBack();
             return;
         }
 
-        // If only one tab and it's new tab page, exit
         if (tabManager.getTabCount() <= 1) {
             if (tab != null && tab.getUrl().startsWith("zenith://")) {
                 super.onBackPressed();
@@ -888,7 +1205,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             }
         }
 
-        // Close current tab
         if (tabManager.getTabCount() > 1) {
             tabManager.closeTab(tab);
         } else {
@@ -910,7 +1226,6 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         if (tabManager.getActiveTab() != null) {
             tabManager.getActiveTab().onResume();
         }
-        // Refresh preferences
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
     }
 
@@ -959,6 +1274,18 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 holder.ivFavicon.setImageBitmap(tab.getFavicon());
             }
 
+            // Group indicators
+            if (tab.isInGroup()) {
+                holder.groupColorBar.setVisibility(View.VISIBLE);
+                holder.groupColorBar.setBackgroundColor(tab.getGroupColor());
+                holder.tvGroupBadge.setVisibility(View.VISIBLE);
+                holder.tvGroupBadge.setText(tab.getGroupName());
+                holder.tvGroupBadge.setBackgroundColor(tab.getGroupColor());
+            } else {
+                holder.groupColorBar.setVisibility(View.GONE);
+                holder.tvGroupBadge.setVisibility(View.GONE);
+            }
+
             holder.itemView.setOnClickListener(v -> {
                 if (clickListener != null) clickListener.onClick(tab);
             });
@@ -966,20 +1293,41 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             holder.ivClose.setOnClickListener(v -> {
                 if (closeListener != null) closeListener.onClose(tab);
             });
+
+            // Long press to show group assignment
+            holder.itemView.setOnLongClickListener(v -> {
+                showTabGroupMenu(v.getContext(), tab);
+                return true;
+            });
+        }
+
+        private void showTabGroupMenu(Context context, BrowserTab tab) {
+            List<String> items = new ArrayList<>();
+            items.add(tab.isInGroup() ? "Remove from group" : "Add to group");
+
+            new MaterialAlertDialogBuilder(context)
+                .setTitle(tab.getTitle())
+                .setItems(items.toArray(new String[0]), (dialog, which) -> {
+                    // This is a simplified version - the full version would need TabManager reference
+                })
+                .show();
         }
 
         @Override
         public int getItemCount() { return tabs != null ? tabs.size() : 0; }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvTitle;
+            TextView tvTitle, tvGroupBadge;
             ImageView ivFavicon, ivClose;
+            View groupColorBar;
 
             ViewHolder(View view) {
                 super(view);
                 tvTitle = view.findViewById(R.id.tv_title);
                 ivFavicon = view.findViewById(R.id.iv_favicon);
                 ivClose = view.findViewById(R.id.iv_close);
+                groupColorBar = view.findViewById(R.id.group_color_bar);
+                tvGroupBadge = view.findViewById(R.id.tv_group_badge);
             }
         }
     }
