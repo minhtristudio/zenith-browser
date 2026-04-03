@@ -70,41 +70,69 @@ public class BrowserTab {
         webView.setWebViewClient(new TabWebViewClient(listener));
         webView.setWebChromeClient(new TabChromeClient(listener));
 
-        // Enable long-press for context menu
+        // CRITICAL: Disable WebView's default context menu so our custom long-press works
+        webView.setOnCreateContextMenuListener(null);
+
+        // Enable long-press for our custom context menu
         webView.setLongClickable(true);
+        webView.setHapticFeedbackEnabled(true);
         webView.setOnLongClickListener(v -> {
-            // Get hit test result
-            android.webkit.WebView.HitTestResult result = ((WebView) v).getHitTestResult();
-            if (result != null && listener != null) {
+            try {
+                android.webkit.WebView.HitTestResult result = ((WebView) v).getHitTestResult();
+                if (result == null || listener == null) return false;
+
                 int type = result.getType();
-                if (type == android.webkit.WebView.HitTestResult.SRC_ANCHOR_TYPE ||
-                    type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
-                    String linkUrl = result.getExtra();
-                    if (linkUrl != null && !linkUrl.isEmpty()) {
-                        Object tag = v.getTag();
-                        if (tag instanceof BrowserTab) {
-                            hitResultUrl = linkUrl;
-                            hitResultImageUrl = (type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) ? linkUrl : null;
-                            listener.onLongPressLink((BrowserTab) tag, linkUrl);
-                        }
+                String extra = result.getExtra();
+                if (extra == null || extra.isEmpty()) return false;
+
+                Object tag = v.getTag();
+                if (!(tag instanceof BrowserTab)) return false;
+                BrowserTab tab = (BrowserTab) tag;
+
+                switch (type) {
+                    case android.webkit.WebView.HitTestResult.SRC_ANCHOR_TYPE:
+                        hitResultUrl = extra;
+                        hitResultImageUrl = null;
+                        listener.onLongPressLink(tab, extra);
                         return true;
-                    }
-                }
-                if (type == android.webkit.WebView.HitTestResult.IMAGE_TYPE ||
-                    type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
-                    String imageUrl = result.getExtra();
-                    if (imageUrl != null && !imageUrl.isEmpty()) {
-                        Object tag = v.getTag();
-                        if (tag instanceof BrowserTab) {
-                            hitResultImageUrl = imageUrl;
-                            hitResultUrl = (type == android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) ? imageUrl : null;
-                            listener.onLongPressImage((BrowserTab) tag, imageUrl);
-                        }
+
+                    case android.webkit.WebView.HitTestResult.IMAGE_TYPE:
+                        hitResultImageUrl = extra;
+                        hitResultUrl = null;
+                        listener.onLongPressImage(tab, extra);
                         return true;
-                    }
+
+                    case android.webkit.WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE:
+                        // Image wrapped in a link - show combined menu (both link + image options)
+                        hitResultUrl = extra;
+                        hitResultImageUrl = extra;
+                        // For image-anchor, the extra is the link href.
+                        // We need to also get the actual image src via JavaScript.
+                        final WebView wv = (WebView) v;
+                        wv.evaluateJavascript(
+                            "(function(){var el=document.elementFromPoint("
+                            + wv.getWidth()/2 + "," + wv.getHeight()/2
+                            + ");if(el&&(el.tagName==='IMG'||el.querySelector('img'))){var img=el.tagName==='IMG'?el:el.querySelector('img');return img.src;}return '';})()",
+                            imgSrc -> {
+                                if (imgSrc != null && !imgSrc.equals("null") && !imgSrc.isEmpty()
+                                    && !imgSrc.equals("\"\"")) {
+                                    String cleanSrc = imgSrc.replace("\"", "");
+                                    hitResultImageUrl = cleanSrc;
+                                    listener.onLongPressImage(tab, cleanSrc);
+                                } else {
+                                    listener.onLongPressLink(tab, extra);
+                                }
+                            }
+                        );
+                        return true;
+
+                    default:
+                        return false;
                 }
+            } catch (Exception e) {
+                android.util.Log.e("BrowserTab", "Long press error", e);
+                return false;
             }
-            return false;
         });
 
         // Extension JavaScript interface

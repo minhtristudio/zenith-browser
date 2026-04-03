@@ -83,7 +83,10 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VERSION="${{ github.ref_name }}"
           else
-            VERSION="v1.0.0-$(echo $GITHUB_SHA | cut -c1-7)"
+            # Read version from build.gradle
+            GRADLE_VERSION=$(grep 'versionName' app/build.gradle | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+            SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+            VERSION="v${GRADLE_VERSION}-${SHORT_SHA}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
@@ -96,11 +99,19 @@ jobs:
           body: |
             ## Zenith Browser ${{ steps.version.outputs.version }}
 
-            ### Features:
+            ### ✨ v1.1.0 New Features:
+            - **Long-press Context Menu** on links & images (open new tab, open in group, download image, view image, copy link)
+            - **Tab Groups** - Create, rename, colorize, manage tab groups
+            - **MITM-like Userscripts** - Pre-load injection, powerful GM_* APIs (GM_xmlhttpRequest, GM_addStyle, GM_notification...)
+            - **FAB Removed** - Cleaner, less obstructive UI
+            - **Enhanced Settings** - Fixed crash, added userscript/extension toggles
+            - **Fixed Extension ENOENT** - Proper cache dir creation & unique temp files
+
+            ### Core Features:
             - Chromium WebView engine with full JS/DOM/mixed content
             - Built-in Eruda DevTools (Console, Elements, Network, Sources, Storage)
             - Chrome Extension Support (Manifest V2 & V3)
-            - Material 3+ Design with dark mode
+            - Material 3+ Design (Crimson Red / Charcoal / Amber)
             - Multi-tab with incognito, Bookmarks, History, Downloads
             - 8 search engines, Desktop mode, Find in page
             - Android 8+ (API 26)
