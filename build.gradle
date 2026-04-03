@@ -10,12 +10,6 @@ buildscript {
         classpath "com.android.tools.build:gradle:$agp_version"
     }
 }
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
