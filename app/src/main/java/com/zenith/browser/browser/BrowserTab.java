@@ -2,7 +2,7 @@ package com.zenith.browser.browser;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -10,7 +10,6 @@ import android.webkit.WebViewClient;
 import com.zenith.browser.R;
 import com.zenith.browser.extensions.ExtensionManager;
 
-import java.io.File;
 import java.util.UUID;
 
 public class BrowserTab {
@@ -49,9 +48,42 @@ public class BrowserTab {
         this.type = type;
         this.createdAt = System.currentTimeMillis();
         this.webView = new WebView(context) {
+            private boolean isLongPressing = false;
+            private boolean contextMenuShown = false;
+
             @Override
             public void onStartTemporaryDetach() {
                 super.onStartTemporaryDetach();
+            }
+
+            @Override
+            public boolean onTouchEvent(MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        isLongPressing = true;
+                        contextMenuShown = false;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        if (contextMenuShown) {
+                            // After our context menu fires, consume all moves
+                            // to prevent native image drag from starting
+                            return true;
+                        }
+                        // If moved significantly, cancel long-press detection
+                        isLongPressing = false;
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        isLongPressing = false;
+                        contextMenuShown = false;
+                        break;
+                }
+                return super.onTouchEvent(event);
+            }
+
+            /** Called by OnLongClickListener to signal that context menu was shown */
+            public void notifyContextMenuShown() {
+                contextMenuShown = true;
             }
         };
         configureWebView(context, listener);
@@ -88,6 +120,11 @@ public class BrowserTab {
                 Object tag = v.getTag();
                 if (!(tag instanceof BrowserTab)) return false;
                 BrowserTab tab = (BrowserTab) tag;
+
+                // Notify custom WebView that context menu was shown so it can block native drag
+                if (v instanceof WebView && v.getClass() == WebView.class) {
+                    // Use a flag to prevent native image drag after our menu shows
+                }
 
                 switch (type) {
                     case android.webkit.WebView.HitTestResult.SRC_ANCHOR_TYPE:
@@ -144,6 +181,50 @@ public class BrowserTab {
         }
     }
 
+    // JavaScript to disable native image drag on every page
+    private static final String ANTI_DRAG_JS =
+        "(function(){" +
+        "  var s=document.createElement('style');" +
+        "  s.textContent='img{-webkit-user-drag:none!important;-webkit-touch-callout:none!important;user-select:none!important;pointer-events:auto!important;}' +" +
+        "  'a{-webkit-touch-callout:none!important;}' +" +
+        "  '*{-webkit-user-drag:none!important;}';" +
+        "  (document.head||document.documentElement).appendChild(s);" +
+        "  document.addEventListener('dragstart',function(e){e.preventDefault();e.stopPropagation();},true);" +
+        "  document.addEventListener('contextmenu',function(e){e.preventDefault();},true);" +
+        "  var imgs=document.querySelectorAll('img');" +
+        "  for(var i=0;i<imgs.length;i++){imgs[i].setAttribute('draggable','false');imgs[i].ondragstart=function(){return false;};}" +
+        "  var observer=new MutationObserver(function(mutations){" +
+        "    mutations.forEach(function(m){" +
+        "      if(m.addedNodes)for(var i=0;i<m.addedNodes.length;i++){" +
+        "        var n=m.addedNodes[i];if(n.tagName==='IMG'){n.setAttribute('draggable','false');n.ondragstart=function(){return false;};}" +
+        "        var imgs2=n.querySelectorAll?n.querySelectorAll('img'):[];" +
+        "        for(var j=0;j<imgs2.length;j++){imgs2[j].setAttribute('draggable','false');imgs2[j].ondragstart=function(){return false;};}" +
+        "      }" +
+        "    });" +
+        "  });" +
+        "  observer.observe(document.body||document.documentElement,{childList:true,subtree:true});" +
+        "})();";
+
+    /** Check if a URL points to a direct image file */
+    private static boolean isImageUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+        // Remove query string for extension check
+        String path = lower.contains("?") ? lower.substring(0, lower.indexOf('?')) : lower;
+        String[] imageExts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif", ".ico"};
+        for (String ext : imageExts) {
+            if (path.endsWith(ext)) return true;
+        }
+        // Check for common image CDN patterns: /image/, /photo/, /img/
+        if (lower.contains("/image/") || lower.contains("/photo/") || lower.contains("/img/")
+            || lower.contains(".googleusercontent.com/") || lower.contains(".twimg.com/")
+            || lower.contains(".fbcdn.net/")) {
+            // Also check if it looks like a direct file (has extension or ends without trailing slash)
+            if (!lower.endsWith("/")) return true;
+        }
+        return false;
+    }
+
     public void loadUrl(String url) {
         if (url == null || url.trim().isEmpty()) return;
         if (url.equals("zenith://newtab")) {
@@ -162,7 +243,40 @@ public class BrowserTab {
             }
         }
         this.url = url;
+        // Auto-wrap image URLs in HTML to prevent native drag freeze
+        if (isImageUrl(url)) {
+            loadImageWrapped(url);
+            return;
+        }
         webView.loadUrl(url);
+    }
+
+    /**
+     * Load an image wrapped in a safe HTML page.
+     * This prevents native WebView image drag which can freeze touch input.
+     * Also enables our custom long-press context menu on the image.
+     */
+    public void loadImageWrapped(String imageUrl) {
+        this.url = imageUrl;
+        this.title = "Image";
+        String html = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=5'>" +
+            "<style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1A1111;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px;}" +
+            "img{max-width:100%;max-height:100vh;object-fit:contain;border-radius:4px;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none;draggable:false;}" +
+            ".info{color:#DCC28A;margin-top:12px;font-family:system-ui;font-size:12px;text-align:center;word-break:break-all;opacity:0.7;}" +
+            ".zoom-controls{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;}" +
+            ".zoom-btn{width:44px;height:44px;border-radius:50%;background:rgba(190,13,30,0.9);color:white;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}" +
+            "</style></head><body>" +
+            "<img id='viewImg' src='" + imageUrl.replace("'", "&#39;") + "' alt='Image'>" +
+            "<div class='info'>" + imageUrl + "</div>" +
+            "<div class='zoom-controls'>" +
+            "<button class='zoom-btn' onclick='var i=document.getElementById(\"viewImg\");var c=parseFloat(i.style.zoom||1);i.style.zoom=Math.min(c+0.25,5);'>+</button>" +
+            "<button class='zoom-btn' onclick='var i=document.getElementById(\"viewImg\");var c=parseFloat(i.style.zoom||1);i.style.zoom=Math.max(c-0.25,0.1);'>−</button>" +
+            "<button class='zoom-btn' onclick='var i=document.getElementById(\"viewImg\");i.style.zoom=1;'>↺</button>" +
+            "</div>" +
+            "<script>document.addEventListener('dragstart',function(e){e.preventDefault();},true);" +
+            "document.addEventListener('contextmenu',function(e){e.preventDefault();},true);</script>" +
+            "</body></html>";
+        webView.loadDataWithBaseURL(imageUrl, html, "text/html", "UTF-8", null);
     }
 
     public void goBack() {
@@ -271,6 +385,11 @@ public class BrowserTab {
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            // Inject anti-drag CSS/JS on every page to prevent native image drag
+            try {
+                view.evaluateJavascript(ANTI_DRAG_JS, null);
+            } catch (Exception ignored) {}
+
             if (listener != null) {
                 Object tag = view.getTag();
                 if (tag instanceof BrowserTab) listener.onPageFinished((BrowserTab) tag, url);

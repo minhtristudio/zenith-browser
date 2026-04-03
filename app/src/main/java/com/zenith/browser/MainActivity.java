@@ -770,9 +770,9 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                 if (item == null) return;
 
                 if (item.equals("View image")) {
-                    // Open image in new tab
+                    // Open image wrapped in HTML to prevent native drag freeze
                     BrowserTab tab = tabManager.createTab(BrowserTab.TabType.NORMAL, this);
-                    tab.loadUrl(imageUrl);
+                    tab.loadImageWrapped(imageUrl);
                     tabManager.selectTab(tab);
                 } else if (item.equals("Download image")) {
                     // Start download
