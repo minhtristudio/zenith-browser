@@ -174,8 +174,8 @@ public class ExtensionsActivity extends AppCompatActivity {
                             conn.setConnectTimeout(30000);
                             conn.setReadTimeout(60000);
                             // Handle GitHub redirects manually
-                            int responseCode = conn.getResponseCode();
-                            if (responseCode == 301 || responseCode == 302 || responseCode == 303 || responseCode == 307) {
+                            final int[] responseCodeHolder = {conn.getResponseCode()};
+                            if (responseCodeHolder[0] == 301 || responseCodeHolder[0] == 302 || responseCodeHolder[0] == 303 || responseCodeHolder[0] == 307) {
                                 String newUrl = conn.getHeaderField("Location");
                                 if (newUrl != null) {
                                     conn.disconnect();
@@ -186,12 +186,13 @@ public class ExtensionsActivity extends AppCompatActivity {
                                     conn.setRequestProperty("Accept", "*/*");
                                     conn.setConnectTimeout(30000);
                                     conn.setReadTimeout(60000);
-                                    responseCode = conn.getResponseCode();
+                                    responseCodeHolder[0] = conn.getResponseCode();
                                 }
                             }
 
-                            if (responseCode != 200) {
-                                runOnUiThread(() -> Toast.makeText(this, "Download failed: HTTP " + responseCode, Toast.LENGTH_SHORT).show());
+                            if (responseCodeHolder[0] != 200) {
+                                final int code = responseCodeHolder[0];
+                                runOnUiThread(() -> Toast.makeText(this, "Download failed: HTTP " + code, Toast.LENGTH_SHORT).show());
                                 return;
                             }
 
