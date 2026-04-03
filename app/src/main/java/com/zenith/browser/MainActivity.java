@@ -49,6 +49,7 @@ import com.zenith.browser.data.DownloadService;
 import com.zenith.browser.devtools.DevToolsHelper;
 import com.zenith.browser.extensions.ExtensionManager;
 import com.zenith.browser.extensions.FileUtils;
+import com.zenith.browser.extensions.UserscriptManager;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.bottomappbar.BottomAppBar;
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     // Core
     private TabManager tabManager;
     private ExtensionManager extensionManager;
+    private UserscriptManager userscriptManager;
     private AppDatabase db;
     private SharedPreferences prefs;
 
@@ -120,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         // Initialize
         db = AppDatabase.getInstance(this);
         extensionManager = new ExtensionManager(this);
+        userscriptManager = UserscriptManager.getInstance(this);
 
         // Setup DevTools
         boolean devToolsEnabled = prefs.getBoolean(PREF_DEVTOOLS, true);
@@ -360,6 +363,20 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             }
             extensionManager.injectExtensionApi(webView, tab.getUrl());
             extensionManager.injectContentScripts(webView, tab.getUrl());
+            // Inject userscripts (Tampermonkey-like)
+            if (userscriptManager != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://")) {
+                List<UserscriptManager.Userscript> scripts = userscriptManager.getScriptsForUrl(tab.getUrl());
+                for (UserscriptManager.Userscript script : scripts) {
+                    String injectScript = userscriptManager.buildInjectionScript(script);
+                    if (!injectScript.isEmpty()) {
+                        try {
+                            webView.evaluateJavascript(injectScript, null);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to inject userscript: " + script.name, e);
+                        }
+                    }
+                }
+            }
         }, 500);
     }
 
@@ -505,6 +522,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             menuItems.add("History");
             menuItems.add("Downloads");
             menuItems.add("Extensions");
+            menuItems.add("Userscripts");
             menuItems.add(null); // divider
             menuItems.add("Settings");
 
@@ -546,6 +564,7 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
                     else if (item.equals("History")) startActivityForResult(new Intent(this, com.zenith.browser.ui.HistoryActivity.class), REQUEST_HISTORY);
                     else if (item.equals("Downloads")) startActivity(new Intent(this, com.zenith.browser.ui.DownloadsActivity.class));
                     else if (item.equals("Extensions")) startActivityForResult(new Intent(this, com.zenith.browser.ui.ExtensionsActivity.class), REQUEST_EXTENSIONS);
+                    else if (item.equals("Userscripts")) startActivity(new Intent(this, com.zenith.browser.ui.UserscriptsActivity.class));
                     else if (item.equals("Settings")) startActivityForResult(new Intent(this, com.zenith.browser.ui.SettingsActivity.class), REQUEST_SETTINGS);
                 })
                 .show();
@@ -688,6 +707,20 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
             // Inject extensions after page load
             extensionManager.injectExtensionApi(tab.getWebView(), url);
             extensionManager.injectContentScripts(tab.getWebView(), url);
+            // Inject userscripts after page load
+            if (userscriptManager != null && url != null && !url.startsWith("zenith://")) {
+                List<UserscriptManager.Userscript> scripts = userscriptManager.getScriptsForUrl(url);
+                for (UserscriptManager.Userscript script : scripts) {
+                    String injectScript = userscriptManager.buildInjectionScript(script);
+                    if (!injectScript.isEmpty()) {
+                        try {
+                            tab.getWebView().evaluateJavascript(injectScript, null);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to inject userscript: " + script.name, e);
+                        }
+                    }
+                }
+            }
         }
     }
 

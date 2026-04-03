@@ -94,6 +94,11 @@
             android:exported="false"
             android:theme="@style/Theme.ZenithBrowser.Popup" />
 
+        <activity
+            android:name=".ui.UserscriptsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ZenithBrowser.Settings" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -124,14 +124,16 @@ public class ExtensionsActivity extends AppCompatActivity {
     }
 
     private void showAddExtensionDialog() {
-        String[] options = {"From storage (.crx / .zip)", "From URL"};
+        String[] options = {"From storage (.crx / .zip)", "From URL", "Userscript manager"};
         new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.add_extension)
             .setItems(options, (dialog, which) -> {
                 if (which == 0) {
                     openFileChooser();
-                } else {
+                } else if (which == 1) {
                     showUrlInputDialog();
+                } else {
+                    startActivity(new Intent(this, UserscriptsActivity.class));
                 }
             })
             .show();
@@ -147,26 +149,83 @@ public class ExtensionsActivity extends AppCompatActivity {
                 String url = input.getText().toString().trim();
                 if (!url.isEmpty()) {
                     Toast.makeText(this, "Downloading extension...", Toast.LENGTH_SHORT).show();
-                    // Download extension in background (simplified)
                     new Thread(() -> {
                         try {
-                            java.net.URL extUrl = new java.net.URL(url);
+                            // Ensure cache dir exists
+                            File cacheDir = getCacheDir();
+                            if (!cacheDir.exists()) cacheDir.mkdirs();
+
+                            // Determine file extension from URL
+                            String fileUrl = url;
+                            String ext = ".zip";
+                            if (fileUrl.endsWith(".crx")) ext = ".crx";
+                            else if (fileUrl.endsWith(".zip")) ext = ".zip";
+                            else if (fileUrl.endsWith(".user.js")) ext = ".user.js";
+                            else if (fileUrl.endsWith(".js")) ext = ".js";
+
+                            File tempFile = new File(cacheDir, "temp_extension" + ext);
+
+                            java.net.URL extUrl = new java.net.URL(fileUrl);
                             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) extUrl.openConnection();
-                            conn.connect();
+                            conn.setRequestMethod("GET");
+                            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+                            conn.setRequestProperty("Accept", "*/*");
+                            conn.setInstanceFollowRedirects(true);
+                            conn.setConnectTimeout(30000);
+                            conn.setReadTimeout(60000);
+                            // Handle GitHub redirects manually
+                            int responseCode = conn.getResponseCode();
+                            if (responseCode == 301 || responseCode == 302 || responseCode == 303 || responseCode == 307) {
+                                String newUrl = conn.getHeaderField("Location");
+                                if (newUrl != null) {
+                                    conn.disconnect();
+                                    extUrl = new java.net.URL(newUrl);
+                                    conn = (java.net.HttpURLConnection) extUrl.openConnection();
+                                    conn.setRequestMethod("GET");
+                                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+                                    conn.setRequestProperty("Accept", "*/*");
+                                    conn.setConnectTimeout(30000);
+                                    conn.setReadTimeout(60000);
+                                    responseCode = conn.getResponseCode();
+                                }
+                            }
+
+                            if (responseCode != 200) {
+                                runOnUiThread(() -> Toast.makeText(this, "Download failed: HTTP " + responseCode, Toast.LENGTH_SHORT).show());
+                                return;
+                            }
+
+                            int fileSize = conn.getContentLength();
                             InputStream is = conn.getInputStream();
-                            File tempFile = new File(getCacheDir(), "temp_extension.crx");
                             java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
                             byte[] buffer = new byte[8192];
                             int len;
+                            long total = 0;
                             while ((len = is.read(buffer)) > 0) {
                                 fos.write(buffer, 0, len);
+                                total += len;
                             }
+                            fos.flush();
                             fos.close();
                             is.close();
-                            extensionManager.installFromFile(tempFile);
+                            conn.disconnect();
+
+                            if (tempFile.length() == 0) {
+                                tempFile.delete();
+                                runOnUiThread(() -> Toast.makeText(this, "Downloaded file is empty", Toast.LENGTH_SHORT).show());
+                                return;
+                            }
+
+                            // Install extension
+                            if (ext.equals(".user.js") || ext.equals(".js")) {
+                                extensionManager.installUserscript(tempFile, url);
+                            } else {
+                                extensionManager.installFromFile(tempFile);
+                            }
                             tempFile.delete();
-                        } catch (Exception e) {
-                            runOnUiThread(() -> Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        } catch (final Exception e) {
+                            e.printStackTrace();
+                            runOnUiThread(() -> Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
                         }
                     }).start();
                 }

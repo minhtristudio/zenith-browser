@@ -327,6 +327,18 @@ public class ExtensionManager {
     }
 
     /**
+     * Install a userscript (.user.js) via the UserscriptManager
+     */
+    public void installUserscript(File file, String sourceUrl) {
+        UserscriptManager usManager = UserscriptManager.getInstance(context);
+        if (sourceUrl != null && !sourceUrl.isEmpty()) {
+            usManager.installUserscriptFromUrl(sourceUrl);
+        } else {
+            usManager.installUserscriptFromFile(file);
+        }
+    }
+
+    /**
      * JavaScript bridge for extension communication
      */
     public static class JsBridge {
