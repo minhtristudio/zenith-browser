@@ -201,20 +201,14 @@ public class BrowserTab {
             handler.cancel();
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
         public void onLoadResource(WebView view, String url) {
             if (listener != null) listener.onLoadResource((BrowserTab) view.getTag(), url);
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
         public void onReceivedIcon(WebView view, Bitmap icon) {
             if (listener != null) listener.onPageIconChanged((BrowserTab) view.getTag(), icon);
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
         public void onReceivedTitle(WebView view, String title) {
             if (listener != null) listener.onTitleChanged((BrowserTab) view.getTag(), title);
         }
