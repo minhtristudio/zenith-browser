@@ -478,27 +478,52 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
     private void showOverflowMenu() {
         BrowserTab tab = tabManager.getActiveTab();
 
-        String[] menuItems;
-        if (tab != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://")) {
-            menuItems = new String[]{
-                "New tab", "New incognito tab", null,
-                "Share", "Find in page", null,
-                "Desktop site" + (tab.isDesktopMode() ? " \u2713" : ""), null,
-                "Developer Tools", "View source", null,
-                "Bookmarks", "History", "Downloads", "Extensions", null,
-                "Settings"
-            };
-        } else {
-            menuItems = new String[]{
-                "New tab", "New incognito tab", null,
-                "Bookmarks", "History", "Downloads", "Extensions", null,
-                "Settings"
-            };
+        // Build menu items - use a custom adapter to support dividers (null = divider)
+        List<String> menuItems = new ArrayList<>();
+        boolean onWebPage = tab != null && tab.getUrl() != null && !tab.getUrl().startsWith("zenith://");
+
+        menuItems.add("New tab");
+        menuItems.add("New incognito tab");
+        menuItems.add(null); // divider
+
+        if (onWebPage) {
+            menuItems.add("Share");
+            menuItems.add("Find in page");
+            menuItems.add("Desktop site" + (tab.isDesktopMode() ? " \u2713" : ""));
+            menuItems.add(null); // divider
+            menuItems.add("Developer Tools");
+            menuItems.add("View source");
+            menuItems.add(null); // divider
         }
 
+        menuItems.add("Bookmarks");
+        menuItems.add("History");
+        menuItems.add("Downloads");
+        menuItems.add("Extensions");
+        menuItems.add(null); // divider
+        menuItems.add("Settings");
+
+        // Build a non-null items array and track which indices are actual items
+        final String[] displayItems = new String[menuItems.size()];
+        final int[] itemIndexMap = new int[menuItems.size()]; // maps display position -> original index
+        int displayPos = 0;
+        for (int i = 0; i < menuItems.size(); i++) {
+            String item = menuItems.get(i);
+            if (item != null) {
+                displayItems[displayPos] = item;
+                itemIndexMap[displayPos] = i;
+                displayPos++;
+            }
+        }
+
+        // Trim the array to actual size
+        String[] finalItems = new String[displayPos];
+        System.arraycopy(displayItems, 0, finalItems, 0, displayPos);
+
         new MaterialAlertDialogBuilder(this)
-            .setItems(menuItems, (dialog, which) -> {
-                String item = menuItems[which];
+            .setTitle(R.string.menu)
+            .setItems(finalItems, (dialog, which) -> {
+                String item = finalItems[which];
                 if (item == null) return;
 
                 if (item.equals("New tab")) openNewTab();
