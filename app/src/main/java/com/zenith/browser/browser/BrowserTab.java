@@ -182,8 +182,8 @@ public class BrowserTab {
         }
 
         @Override
-        public void shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-            // Let WebView handle all URLs
+        public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+            return false; // Let WebView handle all URLs
         }
 
         @Override
@@ -201,16 +201,19 @@ public class BrowserTab {
             handler.cancel();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void onLoadResource(WebView view, String url) {
             if (listener != null) listener.onLoadResource((BrowserTab) view.getTag(), url);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void onReceivedIcon(WebView view, Bitmap icon) {
             if (listener != null) listener.onPageIconChanged((BrowserTab) view.getTag(), icon);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void onReceivedTitle(WebView view, String title) {
             if (listener != null) listener.onTitleChanged((BrowserTab) view.getTag(), title);
@@ -240,17 +243,13 @@ public class BrowserTab {
         }
 
         @Override
-        public void onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
+        public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
             if (listener != null) {
-                listener.onConsoleMessage((BrowserTab) ((WebView) consoleMessage.sourceId() != null ? view : view).getTag(),
+                listener.onConsoleMessage(null,
                     consoleMessage.message(), consoleMessage.lineNumber(), consoleMessage.sourceId());
             }
-            // Also call the parent
-            super.onConsoleMessage(consoleMessage);
+            return super.onConsoleMessage(consoleMessage);
         }
-
-        // Fix: store reference to view for console messages
-        private WebView view;
 
         @Override
         public void onShowCustomView(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {

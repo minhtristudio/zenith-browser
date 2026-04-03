@@ -54,7 +54,7 @@ public class SettingsActivity extends AppCompatActivity {
                 theme.setSummary(theme.getEntry());
                 theme.setOnPreferenceChangeListener((preference, newValue) -> {
                     theme.setSummary(theme.getEntries()[theme.findIndexOfValue(newValue.toString())]);
-                    recreate();
+                    getActivity().recreate();
                     return true;
                 });
             }
@@ -103,7 +103,7 @@ public class SettingsActivity extends AppCompatActivity {
             // About
             Preference about = findPreference("about");
             if (about != null) {
-                about.setSummary("Zenith Browser v" + BuildConfig.VERSION_NAME);
+                about.setSummary("Zenith Browser v1.0.0");
                 about.setOnPreferenceClickListener(preference -> {
                     // Could show an about dialog
                     return true;
