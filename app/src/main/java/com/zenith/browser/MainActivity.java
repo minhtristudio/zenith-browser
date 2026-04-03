@@ -454,17 +454,18 @@ public class MainActivity extends AppCompatActivity implements BrowserTab.TabLis
         RecyclerView recyclerView = sheetView.findViewById(R.id.recycler_tabs);
         List<BrowserTab> tabs = tabManager.getTabs();
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
-        TabSheetAdapter adapter = new TabSheetAdapter(tabs, tab -> {
+        TabSheetAdapter[] adapterHolder = new TabSheetAdapter[1];
+        adapterHolder[0] = new TabSheetAdapter(tabs, tab -> {
             tabManager.selectTab(tab);
             bottomSheet.dismiss();
         }, tab -> {
             tabManager.closeTab(tab);
-            adapter.setItems(tabManager.getTabs());
+            adapterHolder[0].setItems(tabManager.getTabs());
             if (tabManager.getTabs().isEmpty()) {
                 bottomSheet.dismiss();
             }
         });
-        recyclerView.setAdapter(adapter);
+        recyclerView.setAdapter(adapterHolder[0]);
 
         sheetView.findViewById(R.id.fab_new_tab).setOnClickListener(v -> {
             openNewTab();
